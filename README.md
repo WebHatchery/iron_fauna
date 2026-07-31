@@ -97,8 +97,9 @@ The design canon lives in this directory and drives implementation:
   possession/Boost/hopping, standing orders, called shots.
 - `creature.md` — chassis system: the four chassis stats, power-budget authoring,
   limb mounts, Power Draw vs. Strain, elements-as-synergy, visual identity.
-- `creature_notes.md`, `battle_notes.md` — raw working notes the above were
-  distilled from.
+- `creature_art_bible.md` — the visual language procedural creature art follows:
+  kawaii core, gruesome graft, damage states, palettes.
+- `TODO.md` — what the design canon still leaves unbuilt or untuned.
 
 ## Project layout
 
