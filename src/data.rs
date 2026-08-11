@@ -23,37 +23,39 @@ use settlement::SettlementDef;
 use species::SpeciesDef;
 use world::{MapKind, WorldDef};
 
-const GAME_CONFIG_JSON: &str = include_str!("../assets/data/game_config.json");
-const BALANCE_JSON: &str = include_str!("../assets/data/balance.json");
-const SPECIES_JSON: &str = include_str!("../assets/data/species.json");
-const GRAFTWARE_JSON: &str = include_str!("../assets/data/graftware.json");
-const WORLD_JSON: &str = include_str!("../assets/data/world.json");
-const SETTLEMENTS_JSON: &str = include_str!("../assets/data/settlements.json");
-const QUESTS_JSON: &str = include_str!("../assets/data/quests.json");
-const ITEMS_JSON: &str = include_str!("../assets/data/items.json");
-const FACTORIES_JSON: &str = include_str!("../assets/data/factories.json");
+const GAME_CONFIG_JSON: &str =
+    macroquad_toolkit::include_json_str!("../assets/data/game_config.json");
+const BALANCE_JSON: &str = macroquad_toolkit::include_json_str!("../assets/data/balance.json");
+const SPECIES_JSON: &str = macroquad_toolkit::include_json_str!("../assets/data/species.json");
+const GRAFTWARE_JSON: &str = macroquad_toolkit::include_json_str!("../assets/data/graftware.json");
+const WORLD_JSON: &str = macroquad_toolkit::include_json_str!("../assets/data/world.json");
+const SETTLEMENTS_JSON: &str =
+    macroquad_toolkit::include_json_str!("../assets/data/settlements.json");
+const QUESTS_JSON: &str = macroquad_toolkit::include_json_str!("../assets/data/quests.json");
+const ITEMS_JSON: &str = macroquad_toolkit::include_json_str!("../assets/data/items.json");
+const FACTORIES_JSON: &str = macroquad_toolkit::include_json_str!("../assets/data/factories.json");
 /// Per-region content packs — separate files so regions can be authored
 /// independently; merged into the same registries at load.
 const REGION_PACKS: [(&str, &str); 5] = [
     (
         "mirrormere",
-        include_str!("../assets/data/regions/mirrormere.json"),
+        macroquad_toolkit::include_json_str!("../assets/data/regions/mirrormere.json"),
     ),
     (
         "stormcap",
-        include_str!("../assets/data/regions/stormcap.json"),
+        macroquad_toolkit::include_json_str!("../assets/data/regions/stormcap.json"),
     ),
     (
         "ashvein",
-        include_str!("../assets/data/regions/ashvein.json"),
+        macroquad_toolkit::include_json_str!("../assets/data/regions/ashvein.json"),
     ),
     (
         "sporefen",
-        include_str!("../assets/data/regions/sporefen.json"),
+        macroquad_toolkit::include_json_str!("../assets/data/regions/sporefen.json"),
     ),
     (
         "bonewhite",
-        include_str!("../assets/data/regions/bonewhite.json"),
+        macroquad_toolkit::include_json_str!("../assets/data/regions/bonewhite.json"),
     ),
 ];
 
@@ -67,7 +69,8 @@ struct RegionPack {
     #[serde(default)]
     factories: Vec<FactoryDef>,
 }
-const TEXTURE_MANIFEST_JSON: &str = include_str!("../assets/data/texture_manifest.json");
+const TEXTURE_MANIFEST_JSON: &str =
+    macroquad_toolkit::include_json_str!("../assets/data/texture_manifest.json");
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GameConfig {
@@ -145,14 +148,4 @@ impl GameData {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn embedded_data_loads() {
-        let data = GameData::load().unwrap();
-        assert_eq!(data.config.game_name, "iron_fauna");
-        assert!(!data.species.is_empty());
-        assert!(!data.graftware.is_empty());
-    }
-}
+mod tests;
