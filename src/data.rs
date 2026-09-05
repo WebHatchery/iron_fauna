@@ -14,9 +14,7 @@ use factory::FactoryDef;
 use graftware::GraftwareDef;
 use item::ConsumableDef;
 use macroquad_toolkit::assets::TextureConfig;
-use macroquad_toolkit::data_loader::{
-    load_embedded_json, load_embedded_json_labeled, DataRegistry,
-};
+use macroquad_toolkit::data_loader::{load_embedded_json_labeled, DataRegistry};
 use quest::QuestDef;
 use serde::{Deserialize, Serialize};
 use settlement::SettlementDef;
@@ -98,17 +96,23 @@ impl GameData {
     pub fn load() -> Result<Self, String> {
         let config = load_embedded_json_labeled("game_config", GAME_CONFIG_JSON)?;
         let balance = load_embedded_json_labeled("balance", BALANCE_JSON)?;
-        let species = DataRegistry::from_embedded_json(SPECIES_JSON, "id")?;
-        let graftware = DataRegistry::from_embedded_json(GRAFTWARE_JSON, "id")?;
+        let species = DataRegistry::from_embedded_json(SPECIES_JSON, "id")
+            .map_err(|error| format!("species: {error}"))?;
+        let graftware = DataRegistry::from_embedded_json(GRAFTWARE_JSON, "id")
+            .map_err(|error| format!("graftware: {error}"))?;
         let mut world: WorldDef = load_embedded_json_labeled("world", WORLD_JSON)?;
         let mut settlements: DataRegistry<SettlementDef> =
-            DataRegistry::from_embedded_json(SETTLEMENTS_JSON, "id")?;
-        let quests: DataRegistry<QuestDef> = DataRegistry::from_embedded_json(QUESTS_JSON, "id")?;
-        let items: DataRegistry<ConsumableDef> =
-            DataRegistry::from_embedded_json(ITEMS_JSON, "id")?;
+            DataRegistry::from_embedded_json(SETTLEMENTS_JSON, "id")
+                .map_err(|error| format!("settlements: {error}"))?;
+        let quests: DataRegistry<QuestDef> = DataRegistry::from_embedded_json(QUESTS_JSON, "id")
+            .map_err(|error| format!("quests: {error}"))?;
+        let items: DataRegistry<ConsumableDef> = DataRegistry::from_embedded_json(ITEMS_JSON, "id")
+            .map_err(|error| format!("items: {error}"))?;
         let mut factories: DataRegistry<FactoryDef> =
-            DataRegistry::from_embedded_json(FACTORIES_JSON, "id")?;
-        let texture_manifest = load_embedded_json(TEXTURE_MANIFEST_JSON)?;
+            DataRegistry::from_embedded_json(FACTORIES_JSON, "id")
+                .map_err(|error| format!("factories: {error}"))?;
+        let texture_manifest =
+            load_embedded_json_labeled("texture_manifest", TEXTURE_MANIFEST_JSON)?;
 
         for (name, json) in REGION_PACKS {
             let pack: RegionPack = load_embedded_json_labeled(name, json)?;
