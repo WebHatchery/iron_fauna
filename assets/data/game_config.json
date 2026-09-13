@@ -2,5 +2,27 @@
   "game_name": "iron_fauna",
   "display_name": "IRON FAUNA",
   "save_slot": "autosave",
-  "version": "0.1.0"
+  "version": "0.1.0",
+  "starter": {
+    "rider_name": "Rill",
+    "starting_scrip": 120,
+    "species_id": "volpi",
+    "initial_grafts": [
+      "spark_coil",
+      "chitin_plate",
+      "healing_pod",
+      "static_barb"
+    ],
+    "equipment": [
+      { "limb_id": "foreleg_l", "slot": 0, "graft_id": "spark_coil" },
+      { "limb_id": "foreleg_r", "slot": 0, "graft_id": "chitin_plate" }
+    ],
+    "consumables": [
+      { "item_id": "mend_salve", "count": 2 },
+      { "item_id": "vigor_draught", "count": 1 },
+      { "item_id": "repair_kit", "count": 1 },
+      { "item_id": "incendiary_rounds", "count": 2 }
+    ],
+    "journal_entry": "Took up the road — no family waiting, so the Hollow spends me freely."
+  }
 }

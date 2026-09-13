@@ -1,4 +1,4 @@
-//! Embedded game data: definitions loaded from `assets/data/*.json`.
+//! Embedded game data: definitions loaded from assets/data/*.json.
 
 pub mod balance;
 pub mod factory;
@@ -8,6 +8,8 @@ pub mod quest;
 pub mod settlement;
 pub mod species;
 pub mod world;
+
+mod validation;
 
 use balance::BalanceConfig;
 use factory::FactoryDef;
@@ -32,8 +34,9 @@ const SETTLEMENTS_JSON: &str =
 const QUESTS_JSON: &str = macroquad_toolkit::include_json_str!("../assets/data/quests.json");
 const ITEMS_JSON: &str = macroquad_toolkit::include_json_str!("../assets/data/items.json");
 const FACTORIES_JSON: &str = macroquad_toolkit::include_json_str!("../assets/data/factories.json");
-/// Per-region content packs — separate files so regions can be authored
-/// independently; merged into the same registries at load.
+const TEXTURE_MANIFEST_JSON: &str =
+    macroquad_toolkit::include_json_str!("../assets/data/texture_manifest.json");
+
 const REGION_PACKS: [(&str, &str); 5] = [
     (
         "mirrormere",
@@ -57,7 +60,6 @@ const REGION_PACKS: [(&str, &str); 5] = [
     ),
 ];
 
-/// One region's authored content, merged into the world at load.
 #[derive(Debug, Clone, Deserialize)]
 struct RegionPack {
     #[serde(default)]
@@ -67,8 +69,6 @@ struct RegionPack {
     #[serde(default)]
     factories: Vec<FactoryDef>,
 }
-const TEXTURE_MANIFEST_JSON: &str =
-    macroquad_toolkit::include_json_str!("../assets/data/texture_manifest.json");
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GameConfig {
@@ -76,6 +76,31 @@ pub struct GameConfig {
     pub display_name: String,
     pub save_slot: String,
     pub version: String,
+    pub starter: StarterConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StarterConfig {
+    pub rider_name: String,
+    pub starting_scrip: i64,
+    pub species_id: String,
+    pub initial_grafts: Vec<String>,
+    pub equipment: Vec<StarterEquipment>,
+    pub consumables: Vec<StarterConsumable>,
+    pub journal_entry: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StarterEquipment {
+    pub limb_id: String,
+    pub slot: usize,
+    pub graft_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StarterConsumable {
+    pub item_id: String,
+    pub count: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -117,16 +142,26 @@ impl GameData {
         for (name, json) in REGION_PACKS {
             let pack: RegionPack = load_embedded_json_labeled(name, json)?;
             world.maps.extend(pack.maps);
-            for s in pack.settlements {
-                settlements.insert(s.id.clone(), s);
+            for settlement in pack.settlements {
+                if settlements.contains(&settlement.id) {
+                    return Err(format!(
+                        "content validation: duplicate settlement id '{}' while merging {}",
+                        settlement.id, name
+                    ));
+                }
+                settlements.insert(settlement.id.clone(), settlement);
             }
-            for f in pack.factories {
-                factories.insert(f.id.clone(), f);
+            for factory in pack.factories {
+                if factories.contains(&factory.id) {
+                    return Err(format!(
+                        "content validation: duplicate factory id '{}' while merging {}",
+                        factory.id, name
+                    ));
+                }
+                factories.insert(factory.id.clone(), factory);
             }
         }
 
-        // Merge factory floors into the world map list so traversal, warps,
-        // and encounters work identically inside a Gestarium.
         for (_, factory) in factories.iter() {
             for floor in &factory.floors {
                 let mut floor = floor.clone();
@@ -136,7 +171,7 @@ impl GameData {
             }
         }
 
-        Ok(Self {
+        let data = Self {
             config,
             balance,
             species,
@@ -147,6 +182,13 @@ impl GameData {
             items,
             factories,
             texture_manifest,
-        })
+        };
+        data.validate()?;
+        Ok(data)
+    }
+
+    /// Validate cross-file content after registry and regional merges.
+    pub fn validate(&self) -> Result<(), String> {
+        validation::validate(self)
     }
 }

@@ -67,27 +67,47 @@ impl GameSession {
     /// A fresh game: the orphan rider, a starter core, and a few salvaged
     /// parts to graft.
     pub fn new_game(data: &GameData) -> Self {
-        let mut profile = Profile::new("Rill", 120);
+        let starter_data = &data.config.starter;
+        let mut profile = Profile::new(&starter_data.rider_name, starter_data.starting_scrip);
+        let starter =
+            profile.spawn_creature(data, &starter_data.species_id, CreatureOrigin::Starter);
+        let mut starter_items = std::collections::HashMap::new();
+        for graft in &starter_data.initial_grafts {
+            let item_id = profile.grant_graft(graft, GraftCondition::Intact);
+            starter_items.insert(graft.as_str(), item_id);
+        }
+        for consumable in &starter_data.consumables {
+            profile
+                .inventory
+                .add_consumable(&consumable.item_id, consumable.count);
+        }
 
-        let starter = profile.spawn_creature(data, "volpi", CreatureOrigin::Starter);
-        let coil = profile.grant_graft("spark_coil", GraftCondition::Intact);
-        let plate = profile.grant_graft("chitin_plate", GraftCondition::Intact);
-        profile.grant_graft("healing_pod", GraftCondition::Intact);
-        // A spare Bio-Electric barb — synergizes with the Volpi starter, and
-        // teaches the element system on the very first bench visit.
-        profile.grant_graft("static_barb", GraftCondition::Intact);
-
-        // Starter consumables so the item systems are live from the first fight.
-        profile.inventory.add_consumable("mend_salve", 2);
-        profile.inventory.add_consumable("vigor_draught", 1);
-        profile.inventory.add_consumable("repair_kit", 1);
-        profile.inventory.add_consumable("incendiary_rounds", 2);
-
-        // Pre-graft the starter so the first fight is armed.
         let inventory = profile.inventory.clone();
         if let Some(creature) = profile.roster.creature_mut(starter) {
-            let _ = creature.equip(data, &inventory, "foreleg_l", 0, coil);
-            let _ = creature.equip(data, &inventory, "foreleg_r", 0, plate);
+            for equipment in &starter_data.equipment {
+                let Some(&item_id) = starter_items.get(equipment.graft_id.as_str()) else {
+                    eprintln!(
+                        "starter setup: equipment '{}' has no granted inventory item",
+                        equipment.graft_id
+                    );
+                    continue;
+                };
+                if let Err(error) = creature.equip(
+                    data,
+                    &inventory,
+                    &equipment.limb_id,
+                    equipment.slot,
+                    item_id,
+                ) {
+                    eprintln!(
+                        "starter setup: could not equip '{}' on '{}'/{}: {}",
+                        equipment.graft_id,
+                        equipment.limb_id,
+                        equipment.slot,
+                        error.message()
+                    );
+                }
+            }
         }
 
         let start = data
@@ -110,8 +130,7 @@ impl GameSession {
             quests: Default::default(),
             journal: vec![crate::model::journal::JournalEntry {
                 step: 0,
-                text: "Took up the road — no family waiting, so the Hollow spends me freely."
-                    .to_owned(),
+                text: starter_data.journal_entry.clone(),
             }],
         }
     }

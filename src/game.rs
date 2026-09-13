@@ -84,8 +84,28 @@ impl Game {
         let mut assets = AssetManager::new();
         let placeholder = Image::gen_image_color(16, 16, Color::new(0.75, 0.2, 0.8, 1.0));
         assets.set_placeholder_texture_direct(Texture2D::from_image(&placeholder));
-        let _ = assets.load_asset_pack("assets.zip").await;
-        let _ = assets.load_texture_configs(&data.texture_manifest).await;
+        match assets.load_asset_pack("assets.zip").await {
+            Ok(count) => eprintln!("assets: loaded pack with {} entries", count),
+            Err(error) => eprintln!(
+                "assets: asset pack unavailable, using loose files: {}",
+                error
+            ),
+        }
+        let loaded_textures = assets.load_texture_configs(&data.texture_manifest).await;
+        if loaded_textures != data.texture_manifest.len() {
+            let missing: Vec<&str> = data
+                .texture_manifest
+                .iter()
+                .filter(|texture| !assets.has_texture(&texture.key))
+                .map(|texture| texture.key.as_str())
+                .collect();
+            eprintln!(
+                "assets: loaded {}/{} textures; missing: {}",
+                loaded_textures,
+                data.texture_manifest.len(),
+                missing.join(", ")
+            );
+        }
         // Populate the sprite UI-skin cache from the just-loaded textures.
         ui::skin::init(&assets);
 

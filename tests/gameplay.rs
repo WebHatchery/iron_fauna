@@ -63,6 +63,25 @@ fn embedded_catalogs_and_balance_are_valid() {
 }
 
 #[test]
+fn malformed_content_is_rejected_with_actionable_diagnostics() {
+    let mut bad_map = GameData::load().unwrap();
+    bad_map.world.maps[0].spawn_x = -1;
+    let error = bad_map.validate().unwrap_err();
+    assert!(
+        error.contains("spawn") && error.contains("coordinate"),
+        "{error}"
+    );
+
+    let mut bad_reference = GameData::load().unwrap();
+    bad_reference.graftware.remove("spark_coil");
+    let error = bad_reference.validate().unwrap_err();
+    assert!(
+        error.contains("spark_coil") && error.contains("unknown"),
+        "{error}"
+    );
+}
+
+#[test]
 fn world_maps_and_factory_floors_are_consistent() {
     let data = GameData::load().unwrap();
     assert!(data.world.map(&data.world.start_map).is_some());

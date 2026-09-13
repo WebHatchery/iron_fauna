@@ -54,12 +54,20 @@ pub struct Audio {
 }
 
 impl Audio {
-    /// Loads every SFX. Missing files are skipped silently.
+    /// Loads every SFX and reports unavailable files while retaining silence
+    /// as a usable fallback for headless and muted environments.
     pub async fn load() -> Self {
         let mut manager = SoundManager::new();
         manager.sfx_volume = 0.6;
         for sfx in Sfx::ALL {
-            let _ = manager.load_sound(sfx, sfx.file()).await;
+            if let Err(error) = manager.load_sound(sfx, sfx.file()).await {
+                eprintln!(
+                    "audio: could not load {} from {}: {}",
+                    format!("{:?}", sfx),
+                    sfx.file(),
+                    error
+                );
+            }
         }
         Self { manager }
     }
