@@ -2,6 +2,7 @@
 
 mod actions;
 mod capture;
+pub(crate) mod overworld;
 
 use crate::audio::Audio;
 use crate::combat::engine::Battle;

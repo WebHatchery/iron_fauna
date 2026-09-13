@@ -2,17 +2,14 @@
 //! NPC dialogue, and doors into settlements and Gestaria (`game_design.md` §8).
 
 use crate::combat::unit::UnitSpec;
-use crate::combat::{Side, Stance};
-use crate::data::world::{DialogueRule, DoorTarget, MapDef, MapKind, TileKind};
+use crate::data::world::{DialogueRule, DoorTarget, MapDef, MapKind};
 use crate::data::GameData;
-use crate::model::story;
-use crate::model::warunit::war_unit_grafts;
-use crate::model::worldstate::{RegionMood, WorldState};
+use crate::game::overworld::{TraversalEvent, TraversalOutcome, TraversalService};
+use crate::model::worldstate::RegionMood;
 use crate::state::GameSession;
 use crate::ui::{
     logical_mouse_position, logical_mouse_released, menu_button, LOGICAL_HEIGHT, LOGICAL_WIDTH,
 };
-use crate::util::Rng;
 use macroquad::prelude::*;
 use macroquad_toolkit::assets::AssetManager;
 use macroquad_toolkit::prelude::*;
@@ -72,7 +69,7 @@ pub struct OverworldScreen {
     visual_x: f32,
     visual_y: f32,
     dialogue: Option<DialogueBox>,
-    rng: Rng,
+    traversal: TraversalService,
 }
 
 impl OverworldScreen {
@@ -83,11 +80,7 @@ impl OverworldScreen {
             visual_x: session.location.x as f32,
             visual_y: session.location.y as f32,
             dialogue: None,
-            rng: Rng::new(
-                0x9E37_79B9_7F4A_7C15
-                    ^ (session.steps.wrapping_mul(0x2545_F491_4F6C_DD1D))
-                    ^ session.battles_fought as u64,
-            ),
+            traversal: TraversalService::new(session),
         }
     }
 
@@ -108,7 +101,7 @@ impl OverworldScreen {
             return OverworldResult::OpenCodex;
         }
 
-        let Some(map) = data.world.map(&session.location.map_id) else {
+        let Some(_map) = data.world.map(&session.location.map_id) else {
             return OverworldResult::BackToMenu;
         };
 
@@ -130,7 +123,7 @@ impl OverworldScreen {
                 if dialog.index >= dialog.lines.len() {
                     let closed = self.dialogue.take();
                     if let Some(rule) = closed.and_then(|d| d.on_close) {
-                        let notes = story::apply_dialogue_effects(&rule, session, data);
+                        let notes = self.traversal.finish_dialogue(data, session, Some(rule));
                         if !notes.is_empty() {
                             self.dialogue = Some(DialogueBox::plain("Received", notes));
                         }
@@ -140,50 +133,14 @@ impl OverworldScreen {
             return OverworldResult::Continue;
         }
 
-        // Interact with whatever we're facing.
+        // The traversal service owns map interaction and returns presentation
+        // data or a domain event for this view to display/dispatch.
         if is_key_pressed(KeyCode::Space)
             || is_key_pressed(KeyCode::Enter)
             || logical_mouse_released(INTERACT)
         {
-            let fx = session.location.x + self.facing.0;
-            let fy = session.location.y + self.facing.1;
-            if let Some(npc) = map.npc_at(fx, fy) {
-                if let Some(selection) = story::select_dialogue(npc, session) {
-                    self.dialogue = Some(DialogueBox {
-                        name: npc.name.clone(),
-                        lines: selection.lines.to_vec(),
-                        index: 0,
-                        on_close: selection.rule.cloned(),
-                    });
-                }
-                return OverworldResult::Continue;
-            }
-            match map.tile(fx, fy) {
-                TileKind::GestariumDoor => {
-                    // Doors with a warp behind them open; the rest stay shut.
-                    if let Some(warp) = map.warp_at(fx, fy) {
-                        session.location.map_id = warp.to_map.clone();
-                        session.location.x = warp.to_x;
-                        session.location.y = warp.to_y;
-                        self.snap_visual(session);
-                    } else {
-                        self.dialogue = Some(DialogueBox::plain(
-                            "Sealed Doors",
-                            vec![
-                                "Warm air breathes through the seam. Deep in the hum of the earth, something is still growing.".to_owned(),
-                                "The doors do not answer. Not yet.".to_owned(),
-                            ],
-                        ));
-                    }
-                    return OverworldResult::Continue;
-                }
-                TileKind::Heart => {
-                    if let Some(factory_id) = &map.factory_id {
-                        return OverworldResult::HeartInteract(factory_id.clone());
-                    }
-                }
-                _ => {}
-            }
+            let outcome = self.traversal.interact(data, session, self.facing);
+            return self.apply_traversal_outcome(outcome);
         }
 
         self.move_timer -= dt;
@@ -191,75 +148,48 @@ impl OverworldScreen {
         if let Some(dir) = dir {
             self.facing = dir;
             if self.move_timer <= 0.0 {
-                let nx = session.location.x + dir.0;
-                let ny = session.location.y + dir.1;
-                // On a diagonal, refuse to squeeze between two walls — both
-                // orthogonal neighbours blocked means there's no real gap.
-                let cut_corner = dir.0 != 0
-                    && dir.1 != 0
-                    && !map.walkable(session.location.x + dir.0, session.location.y)
-                    && !map.walkable(session.location.x, session.location.y + dir.1);
-                if map.walkable(nx, ny) && !cut_corner {
-                    session.location.x = nx;
-                    session.location.y = ny;
-                    session.steps += 1;
+                let before = (
+                    session.location.map_id.clone(),
+                    session.location.x,
+                    session.location.y,
+                );
+                let outcome = self.traversal.step(data, session, dir);
+                let moved = before
+                    != (
+                        session.location.map_id.clone(),
+                        session.location.x,
+                        session.location.y,
+                    );
+                if moved {
                     self.move_timer = step_time(data, session);
-
-                    // Untended reseeded regions slide toward relapse (§9.1);
-                    // the tip-over arrives as a story beat, not a stat.
-                    if let Some(factory_id) = session.world_state.tick_relapse(
-                        data.balance.world.relapse_per_step,
-                        data.balance.world.relapse_invested_mult,
-                    ) {
-                        let name = data
-                            .factories
-                            .get(&factory_id)
-                            .map(|f| f.name.clone())
-                            .unwrap_or(factory_id);
-                        self.dialogue = Some(DialogueBox::plain(
-                            "Word on the road",
-                            vec![
-                                format!("Travellers say the land around {} is wrong again. Grafted shapes drilling in the fields you brought back to life.", name),
-                                "You remember planting that seed. Someone is watering it with the old poison.".to_owned(),
-                                "The heart will have a new keeper. Go and meet what you made possible.".to_owned(),
-                            ],
-                        ));
-                    }
-
-                    if let Some(warp) = map.warp_at(nx, ny) {
-                        session.location.map_id = warp.to_map.clone();
-                        session.location.x = warp.to_x;
-                        session.location.y = warp.to_y;
-                        self.snap_visual(session);
-                        return OverworldResult::Continue;
-                    }
-                    let tile = map.tile(nx, ny);
-                    if tile == TileKind::SettlementDoor {
-                        let target = map
-                            .door_at(nx, ny)
-                            .map(|d| d.target)
-                            .unwrap_or(DoorTarget::Hub);
-                        return OverworldResult::OpenSettlement(target);
-                    }
-                    if tile.encounter_prone() {
-                        let rate = effective_encounter_rate(map, data, session);
-                        if self.rng.chance(rate) {
-                            // Relapsed regions field armed patrols in the open.
-                            let mood = session.world_state.region_mood(data, &map.region);
-                            let armed =
-                                map.kind == MapKind::Factory || mood == RegionMood::Relapsed;
-                            if let Some(pack) = roll_encounter(map, data, &mut self.rng, armed) {
-                                return OverworldResult::StartEncounter(pack);
-                            }
-                        }
-                    }
-                } else {
+                } else if matches!(outcome.event, TraversalEvent::Continue) {
                     // Bumping still turns the step timer over slightly.
                     self.move_timer = 0.08;
                 }
+                if moved && session.location.map_id != before.0 {
+                    self.snap_visual(session);
+                }
+                return self.apply_traversal_outcome(outcome);
             }
         }
         OverworldResult::Continue
+    }
+
+    fn apply_traversal_outcome(&mut self, outcome: TraversalOutcome) -> OverworldResult {
+        if let Some(dialogue) = outcome.dialogue {
+            self.dialogue = Some(DialogueBox {
+                name: dialogue.name,
+                lines: dialogue.lines,
+                index: 0,
+                on_close: dialogue.on_close,
+            });
+        }
+        match outcome.event {
+            TraversalEvent::Continue => OverworldResult::Continue,
+            TraversalEvent::OpenSettlement(target) => OverworldResult::OpenSettlement(target),
+            TraversalEvent::StartEncounter(pack) => OverworldResult::StartEncounter(pack),
+            TraversalEvent::HeartInteract(factory_id) => OverworldResult::HeartInteract(factory_id),
+        }
     }
 
     /// Teleports (warps, door transits) must not glide across the gap — pin the
@@ -484,77 +414,6 @@ fn step_time(data: &GameData, session: &GameSession) -> f32 {
 
 /// Encounter richness responds to the region's verdict; dormant factories
 /// stop birthing patrols entirely.
-fn effective_encounter_rate(map: &MapDef, data: &GameData, session: &GameSession) -> f32 {
-    match map.kind {
-        MapKind::Factory => {
-            let active = map
-                .factory_id
-                .as_deref()
-                .map(|id| session.world_state.factory_active(id))
-                .unwrap_or(true);
-            if active {
-                map.encounter_rate
-            } else {
-                0.0
-            }
-        }
-        MapKind::Overworld => {
-            let mood = session.world_state.region_mood(data, &map.region);
-            map.encounter_rate * WorldState::encounter_rate_mult(mood)
-        }
-    }
-}
-
-fn roll_encounter(
-    map: &MapDef,
-    data: &GameData,
-    rng: &mut Rng,
-    armed: bool,
-) -> Option<Vec<UnitSpec>> {
-    let total: u32 = map.encounters.iter().map(|e| e.weight).sum();
-    if total == 0 {
-        return None;
-    }
-    let mut roll = (rng.next_u64() % total as u64) as u32;
-    let entry = map.encounters.iter().find(|e| {
-        if roll < e.weight {
-            true
-        } else {
-            roll -= e.weight;
-            false
-        }
-    })?;
-    let count = entry.min + (rng.below((entry.max - entry.min + 1) as usize) as u32);
-    let species = data.species.get(&entry.species)?;
-    // Factory-born (and relapse-militarized) units come out already armed.
-    let tier = data.world.region(&map.region).map(|r| r.tier).unwrap_or(1);
-    Some(
-        (0..count)
-            .map(|i| {
-                let grafts = if armed {
-                    war_unit_grafts(species, data, tier, rng)
-                } else {
-                    Vec::new()
-                };
-                let label = if armed { "war-unit" } else { "wild" };
-                UnitSpec {
-                    species_id: entry.species.clone(),
-                    name: if count > 1 {
-                        format!("{} {} {}", label, species.name, i + 1)
-                    } else {
-                        format!("{} {}", label, species.name)
-                    },
-                    side: Side::Enemy,
-                    creature_id: None,
-                    bond: 0.0,
-                    stance: Stance::Aggressive,
-                    grafts,
-                }
-            })
-            .collect(),
-    )
-}
-
 fn draw_dialogue(dialog: &DialogueBox, control_hint: &str) {
     let rect = Rect::new(60.0, LOGICAL_HEIGHT - 170.0, LOGICAL_WIDTH - 120.0, 130.0);
     draw_surface(
