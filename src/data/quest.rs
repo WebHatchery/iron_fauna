@@ -16,6 +16,9 @@ pub struct QuestObjective {
     pub kind: QuestObjectiveKind,
     /// How many of the tracked event must occur.
     pub count: u32,
+    /// Optional region restriction for a regional bounty.
+    #[serde(default)]
+    pub region: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -68,6 +68,17 @@ pub fn start(session: &mut GameSession, data: &GameData, quest_id: &str) -> Opti
 /// Advance every active `SubdueWild` quest by `n` subdued creatures. Any quest
 /// whose objective is now met moves to `ready`. Returns notice lines.
 pub fn advance_subdue(session: &mut GameSession, data: &GameData, n: u32) -> Vec<String> {
+    advance_subdue_in_region(session, data, n, None)
+}
+
+/// Advance regional bounties only when the captured creatures came from their
+/// authored region. Global objectives continue to use `advance_subdue`.
+pub fn advance_subdue_in_region(
+    session: &mut GameSession,
+    data: &GameData,
+    n: u32,
+    region: Option<&str>,
+) -> Vec<String> {
     let mut notes = Vec::new();
     let mut completed = Vec::new();
     for (id, progress) in session.quests.active.iter_mut() {
@@ -75,6 +86,14 @@ pub fn advance_subdue(session: &mut GameSession, data: &GameData, n: u32) -> Vec
             continue;
         };
         if def.objective.kind != QuestObjectiveKind::SubdueWild {
+            continue;
+        }
+        if def
+            .objective
+            .region
+            .as_deref()
+            .is_some_and(|wanted| Some(wanted) != region)
+        {
             continue;
         }
         *progress = (*progress + n).min(def.objective.count);

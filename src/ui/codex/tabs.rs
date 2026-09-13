@@ -331,7 +331,7 @@ pub(super) fn party(
             &format!(
                 "{} · cost {}",
                 cr.species(data).size.display_name(),
-                cr.species(data).size.slot_cost()
+                cr.species(data).size.slot_cost(&data.balance)
             ),
             row.x + 12.0,
             row.y + 37.0,
@@ -390,7 +390,7 @@ pub(super) fn party(
             15.0,
             dark::TEXT,
         );
-        let fits = cr.species(data).size.slot_cost() <= slots_free;
+        let fits = cr.species(data).size.slot_cost(&data.balance) <= slots_free;
         if menu_button(
             Rect::new(row.right() - 70.0, row.y + 6.0, 62.0, 28.0),
             "Take",

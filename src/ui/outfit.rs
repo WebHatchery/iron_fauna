@@ -196,7 +196,7 @@ impl OutfitScreen {
             &format!(
                 "{} ({})",
                 creature.display_name(ctx.data),
-                species.size.slot_cost()
+                species.size.slot_cost(&ctx.data.balance)
             ),
             row.x + 32.0,
             row.y + 20.0,
@@ -222,7 +222,7 @@ impl OutfitScreen {
                 ctx.actions.push(OutfitAction::ToStorage(creature.id));
             }
         } else {
-            let fits = species.size.slot_cost() <= ctx.slots_free;
+            let fits = species.size.slot_cost(&ctx.data.balance) <= ctx.slots_free;
             if menu_button(btn, "Take", fits, ctx.mouse) {
                 ctx.actions.push(OutfitAction::ToParty(creature.id));
             }

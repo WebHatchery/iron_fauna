@@ -15,6 +15,27 @@ pub struct SizeScaled {
     pub huge: f32,
 }
 
+/// Party slot costs are integer capacity units, kept in data so a size pass
+/// does not require changing gameplay code.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct SizeSlotCosts {
+    pub small: u32,
+    pub medium: u32,
+    pub large: u32,
+    pub huge: u32,
+}
+
+impl SizeSlotCosts {
+    pub fn get(&self, size: SizeClass) -> u32 {
+        match size {
+            SizeClass::Small => self.small,
+            SizeClass::Medium => self.medium,
+            SizeClass::Large => self.large,
+            SizeClass::Huge => self.huge,
+        }
+    }
+}
+
 impl SizeScaled {
     pub fn get(&self, size: SizeClass) -> f32 {
         match size {
@@ -73,6 +94,18 @@ pub struct SpeciesCurves {
     /// Bond level bonuses (per point): vigor % and strain-threshold %.
     pub bond_vigor_pct: f32,
     pub bond_strain_pct: f32,
+}
+
+/// Authoring costs used to keep the roster's chassis traits inside one budget.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PowerBudgetTuning {
+    pub total: f32,
+    pub power_per_point: f32,
+    pub speed_per_point: f32,
+    pub extra_limb_cost: f32,
+    pub natural_flight_cost: f32,
+    pub innate_armor_per_point: f32,
+    pub size_cost: SizeScaled,
 }
 
 /// Vigor economy knobs (`game_design.md` §4.2).
@@ -173,6 +206,8 @@ pub struct WorldTuning {
 pub struct BalanceConfig {
     /// Field/party budget in slots (`combat.md` §2.1).
     pub party_slot_budget: u32,
+    pub party_slot_cost: SizeSlotCosts,
+    pub power_budget: PowerBudgetTuning,
     pub curves: SpeciesCurves,
     pub vigor: VigorTuning,
     pub strain: StrainTuning,

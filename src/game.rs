@@ -273,9 +273,17 @@ impl Game {
             if let Some(crate::combat::BattleOutcome::Victory(rewards)) = &screen.battle.outcome {
                 let subdued = rewards.captured_species.len() as u32;
                 if subdued > 0 {
-                    for line in
-                        crate::model::quest::advance_subdue(&mut self.session, &self.data, subdued)
-                    {
+                    let region = self
+                        .data
+                        .world
+                        .map(&self.session.location.map_id)
+                        .map(|map| map.region.as_str());
+                    for line in crate::model::quest::advance_subdue_in_region(
+                        &mut self.session,
+                        &self.data,
+                        subdued,
+                        region,
+                    ) {
                         self.notifications.success(line);
                     }
                 }

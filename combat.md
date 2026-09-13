@@ -32,14 +32,14 @@ A battle loadout is built from a fixed **6-slot budget**, spent on creatures by 
 | Small | 1 |
 | Medium | 2 |
 | Large | 3 |
-| Huge | 4 |
+| Huge | 5 |
 
 That budget is flexible by design — the same 6 slots can produce very different parties:
 
 - 6 Small creatures — a swarm of fast, fragile skirmishers.
 - 2 Large creatures — a pair of walking fortresses.
 - 1 Small + 1 Medium + 1 Large — a balanced mixed squad.
-- 1 Huge + 1 Medium — a single walking fortress with one support unit backing it up.
+- 1 Huge + 1 Small — a single walking fortress with one light support unit backing it up.
 
 You can own a larger overall roster of caught creatures (the collection layer, `game_design.md` §6), but your traveling party — and every individual fight — is fielded from this same 6-slot budget. Anything caught beyond that stays in settlement storage (`game_design.md` §8) until you swap it in. This also resolves the 2D-lane readability concern raised in `battle_notes.md` without needing a separate "active field cap": Large creatures are the ones with the biggest, busiest sprites, and their slot cost naturally caps how many can be on screen at once (max 2), while cheap, simple Small sprites can crowd the field in larger numbers without it becoming unreadable.
 
@@ -129,16 +129,22 @@ Same engine underneath all three from `game_design.md` §5 — only the fiction 
 
 - Combat format: 2D side-view, fixed positions (no movement/range), real-time clock with an Atelier-style command menu; one ridden creature commanded a turn at a time (§1).
 - Pacing control: player-selectable Wait/Active setting governing when the command menu opens (§1).
-- Party structure: 6-slot budget spent by Size (Small 1 / Medium 2 / Large 3), rider-possession + Standing Orders, not full simultaneous multi-unit control (§2).
+- Party structure: 6-slot budget spent by Size (Small 1 / Medium 2 / Large 3 / Huge 5), rider-possession + Standing Orders, not full simultaneous multi-unit control (§2).
 - Standing Orders scope: kept to Aggressive/Defensive stances plus per-action cooldowns for the MVP, not a deeper gambit-scripting system (§4).
 - Called-shot input: chosen from the Strike submenu (center mass / each graft / each limb), with `<-`/`->` to switch foe (§3.1).
 - The Boost: not fixed — depends on the ridden creature's species *and* its currently equipped graftware (§3.2).
 - Player-side core-crack consequences: an individual core-crack downs that one creature; losing every fielded creature ends the encounter in a flee/escape, not a game over (§7.1).
-- Huge-class slot cost: 4 slots (§2.1) — Huge is player-fieldable, just expensive.
+- Huge-class slot cost: 5 slots (§2.1) — Huge is player-fieldable, but leaves room for only one Small support creature.
 - Field budget: confirmed at 6 slots — this is also the traveling-party cap, not just a battle-loadout number (§2.1). Exact per-size costs still get final tuning during production, same as any balance number.
+
+The first authored pass puts the size costs in `assets/data/balance.json` so the
+party rule is tunable data. The same pass reduces the global weapon multiplier
+to 1.5 and element synergy to 1.2, then checks every factory guard, duelist
+party, and representative early wild pack through deterministic headless
+simulations. All authored encounters reached an outcome within the test cap.
 
 No open items remain from `battle_notes.md`'s original list.
 
 ---
 
-*End of draft v0.1. Assumes 2D side-view real-time-with-pause per this session's direction; party slot costs are placeholders pending prototyping — see §9.*
+*End of draft v0.1. Assumes 2D side-view real-time-with-pause per this session's direction; balance values are authored in data and covered by deterministic regression tests.*

@@ -194,7 +194,22 @@ The alternative this document is explicitly rejecting is designing ~150 creature
 
 **Resolved:**
 
-- **Numbers stay placeholders for now.** Power Budget total, trait costs, mount counts, and Power Draw values throughout §3–§5 are deliberately unbalanced pending a dedicated prototyping/playtesting pass — that's an accepted gap, not a blocker for continued design work.
+- **Numbers are authored in the balance data.** The roster now uses a 100-point
+  chassis budget: Power, Speed, extra limbs, flight, innate armor, and Size each
+  have explicit costs in `assets/data/balance.json`, and startup validation rejects
+  a species that exceeds the total. This keeps the 32-species roster comparable
+  while preserving distinct chassis roles.
+- **Mounts and Power Draw were tuned together.** Utility and Heavy chassis keep
+  their extra mount points, but heavy weapons pay for burst or rider boosts in
+  Power Draw. Tier-two Bolt Cannon was eased to 56 Draw so it can be a meaningful
+  midgame anchor; Quill Volley and Tempest Organ rose to 42 and 74 Draw because
+  their extra-shot and chain effects multiply their listed damage. The global
+  weapon multiplier is 1.5 and matching-element synergy is 1.2, keeping a
+  strong loadout decisive without making overdraw free.
+- **Party slots are data.** Small, Medium, and Large cost 1, 2, and 3 slots;
+  Huge costs 5 of the six-slot budget. A Huge chassis therefore remains a
+  fortress choice with room for only one small support creature, while the
+  lighter roster can still form broad parties.
 - **Power Capacity is player-facing** (§5) — shown live on the loadout/equip screen so players can see remaining capacity and balance it against the graftware they're fitting. (The species-authoring Power *Budget* in §3 stays a designer-side tool — a separate thing from this.)
 - **Type is dropped.** Element (§6) is the only classification axis a species carries.
 - **Flight is out of scope for the current battle system.** No special in-fight terrain/positioning rules for flying creatures at launch (`game_design.md` §4.1's loop applies to them the same as anyone else). Flight's real payoff is overworld traversal — a Flier-trait creature lets the player move faster across the map (`game_design.md` §8).

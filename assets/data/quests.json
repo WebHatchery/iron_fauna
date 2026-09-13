@@ -7,5 +7,50 @@
     "objective": { "kind": "subdue_wild", "count": 3 },
     "reward_scrip": 90,
     "reward_grafts": ["chitin_plate"]
+  },
+  {
+    "id": "bounty_mirrormere",
+    "name": "The Drowned Count",
+    "giver": "Diver Maren",
+    "tracker": "Subdue wild creatures in Mirrormere",
+    "objective": { "kind": "subdue_wild", "count": 3, "region": "mirrormere" },
+    "reward_scrip": 140,
+    "reward_grafts": ["geyser_gland"]
+  },
+  {
+    "id": "bounty_stormcap",
+    "name": "Cloudbreak Count",
+    "giver": "Climber Isolde",
+    "tracker": "Subdue wild creatures in Stormcap",
+    "objective": { "kind": "subdue_wild", "count": 4, "region": "stormcap" },
+    "reward_scrip": 180,
+    "reward_grafts": ["static_barb"]
+  },
+  {
+    "id": "bounty_ashvein",
+    "name": "Ashfall Accounting",
+    "giver": "Vess the Ashwalker",
+    "tracker": "Subdue wild creatures in Ashvein",
+    "objective": { "kind": "subdue_wild", "count": 4, "region": "ashvein" },
+    "reward_scrip": 220,
+    "reward_grafts": ["quill_volley"]
+  },
+  {
+    "id": "bounty_sporefen",
+    "name": "What the Fen Keeps",
+    "giver": "Gravedigger Oon",
+    "tracker": "Subdue wild creatures in Sporefen",
+    "objective": { "kind": "subdue_wild", "count": 5, "region": "sporefen" },
+    "reward_scrip": 260,
+    "reward_grafts": ["healing_pod"]
+  },
+  {
+    "id": "bounty_bonewhite",
+    "name": "The First Ruin's Tally",
+    "giver": "Pilgrim Sabel",
+    "tracker": "Subdue wild creatures in Bonewhite",
+    "objective": { "kind": "subdue_wild", "count": 6, "region": "bonewhite" },
+    "reward_scrip": 320,
+    "reward_grafts": ["bone_lattice"]
   }
 ]

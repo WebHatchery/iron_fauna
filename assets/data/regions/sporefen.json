@@ -252,7 +252,7 @@
       ],
       "spawn_x": 2,
       "spawn_y": 6,
-      "encounter_rate": 0.14,
+      "encounter_rate": 0.13,
       "encounters": [
         {
           "species": "toxole",
@@ -309,6 +309,34 @@
           "y": 7,
           "name": "Gravedigger Oon",
           "dialogue": [
+            {
+              "when": { "quest_ready": "bounty_sporefen" },
+              "lines": [
+                "Five cores still breathing. That is five graves I do not have to dig.",
+                "Take the healing pod. Keep your companions whole enough that I can keep my shovel idle."
+              ],
+              "complete_quest": "bounty_sporefen"
+            },
+            {
+              "when": { "quest_active": "bounty_sporefen" },
+              "lines": [
+                "The fen has not given up five bodies yet. Subdue them gently; rot is patient and I am tired."
+              ]
+            },
+            {
+              "when": { "quest_done": "bounty_sporefen" },
+              "lines": [
+                "What the fen kept, you returned alive. I can live with that kind of work."
+              ]
+            },
+            {
+              "when": { "quest_none": "bounty_sporefen" },
+              "lines": [
+                "The Bloom's wild things are spilling onto the causeway. Subdue five in Sporefen before they become graves.",
+                "Bring me cores, not corpses. I have enough of the latter."
+              ],
+              "start_quest": "bounty_sporefen"
+            },
             {
               "lines": [
                 "They're grafting in the deep fen again. I've been digging graves for the new keeper's cast-offs all week. Go put a stop to the grafting, not just the graves."

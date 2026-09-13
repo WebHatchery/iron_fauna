@@ -244,6 +244,34 @@
           "name": "Diver Maren",
           "dialogue": [
             {
+              "when": { "quest_ready": "bounty_mirrormere" },
+              "lines": [
+                "You counted the drowned ones and brought the count home. The Font's edge is quieter for it.",
+                "Take this geyser gland. It has been waiting for a rider who can keep their hands gentle."
+              ],
+              "complete_quest": "bounty_mirrormere"
+            },
+            {
+              "when": { "quest_active": "bounty_mirrormere" },
+              "lines": [
+                "The count is not finished. The shallows remember every shell you crack, so make each one matter."
+              ]
+            },
+            {
+              "when": { "quest_done": "bounty_mirrormere" },
+              "lines": [
+                "The drowned count is settled. The water has not forgiven us, but it has stopped adding names."
+              ]
+            },
+            {
+              "when": { "quest_none": "bounty_mirrormere" },
+              "lines": [
+                "The Font's wild things are crowding the causeway. Subdue three in Mirrormere and bring me the count.",
+                "Crack the shell, leave the core breathing. I will pay for a clean tally."
+              ],
+              "start_quest": "bounty_mirrormere"
+            },
+            {
               "when": { "flags_none": ["mirrormere_gift"] },
               "lines": [
                 "Hold up. You're walking at those doors, which makes you either the rider Saltwick keeps praying about or the next thing I fish out of the shallows.",

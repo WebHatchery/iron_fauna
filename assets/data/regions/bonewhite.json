@@ -368,6 +368,34 @@
           "name": "Pilgrim Sabel",
           "dialogue": [
             {
+              "when": { "quest_ready": "bounty_bonewhite" },
+              "lines": [
+                "Six cores carried out of the first ruin alive. That is a better prayer than any I know.",
+                "Take this bone lattice. Let it remember the shape of something worth saving."
+              ],
+              "complete_quest": "bounty_bonewhite"
+            },
+            {
+              "when": { "quest_active": "bounty_bonewhite" },
+              "lines": [
+                "The Flats still hold six wild bodies for your tally. Walk the old road and bring them back breathing."
+              ]
+            },
+            {
+              "when": { "quest_done": "bounty_bonewhite" },
+              "lines": [
+                "The first ruin's tally is finished. Nothing here forgives us, but something here remembers."
+              ]
+            },
+            {
+              "when": { "quest_none": "bounty_bonewhite" },
+              "lines": [
+                "The Maw's outskirts are full of wild creatures. Subdue six in Bonewhite and bring them past the first gate.",
+                "If the oldest ruin taught us anything, it is that a living core is not spare material."
+              ],
+              "start_quest": "bounty_bonewhite"
+            },
+            {
               "lines": [
                 "The relapse reached even here. The first place. If the Maw can slide back, nothing you've built is safe. Go, and this time understand what you're choosing."
               ],

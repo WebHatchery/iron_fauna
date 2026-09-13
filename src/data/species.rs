@@ -40,13 +40,8 @@ pub enum SizeClass {
 
 impl SizeClass {
     /// Party/battle field budget cost (`combat.md` §2.1).
-    pub fn slot_cost(self) -> u32 {
-        match self {
-            SizeClass::Small => 1,
-            SizeClass::Medium => 2,
-            SizeClass::Large => 3,
-            SizeClass::Huge => 4,
-        }
+    pub fn slot_cost(self, balance: &BalanceConfig) -> u32 {
+        balance.party_slot_cost.get(self)
     }
 
     pub fn display_name(self) -> &'static str {
@@ -198,6 +193,20 @@ pub struct DerivedStats {
 }
 
 impl SpeciesDef {
+    pub fn power_budget_cost(&self, bal: &BalanceConfig) -> f32 {
+        let extra_limbs = self.limbs.len().saturating_sub(4) as f32;
+        self.power as f32 * bal.power_budget.power_per_point
+            + self.speed as f32 * bal.power_budget.speed_per_point
+            + extra_limbs * bal.power_budget.extra_limb_cost
+            + if self.natural_flight {
+                bal.power_budget.natural_flight_cost
+            } else {
+                0.0
+            }
+            + self.innate_armor as f32 * bal.power_budget.innate_armor_per_point
+            + bal.power_budget.size_cost.get(self.size)
+    }
+
     pub fn derived(&self, bal: &BalanceConfig) -> DerivedStats {
         let c = &bal.curves;
         let power = self.power as f32;

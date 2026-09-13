@@ -292,7 +292,7 @@
       "region": "ashvein",
       "spawn_x": 17,
       "spawn_y": 13,
-      "encounter_rate": 0.14,
+      "encounter_rate": 0.13,
       "encounters": [
         {
           "species": "kilnox",
@@ -411,6 +411,34 @@
           "y": 13,
           "name": "Vess the Ashwalker",
           "dialogue": [
+            {
+              "when": { "quest_ready": "bounty_ashvein" },
+              "lines": [
+                "Four ashfield cores, all breathing. The mountain can keep its war for another day.",
+                "Take this quill volley. It was buried hot and came out wanting work."
+              ],
+              "complete_quest": "bounty_ashvein"
+            },
+            {
+              "when": { "quest_active": "bounty_ashvein" },
+              "lines": [
+                "The ash keeps moving and your tally is not done. Subdue four in Ashvein, then let the drifts settle."
+              ]
+            },
+            {
+              "when": { "quest_done": "bounty_ashvein" },
+              "lines": [
+                "Ashfall accounting is closed. The dead can stay buried until the mountain invents another reason."
+              ]
+            },
+            {
+              "when": { "quest_none": "bounty_ashvein" },
+              "lines": [
+                "The Kiln's wild things are moving through the ashfields. Subdue four in Ashvein and bring me the count.",
+                "No trophies. I have enough dead metal already."
+              ],
+              "start_quest": "bounty_ashvein"
+            },
             {
               "when": {
                 "flags_none": [

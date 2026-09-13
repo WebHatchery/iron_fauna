@@ -5,6 +5,7 @@ use iron_fauna::combat::{
     BattleContext, BattleOutcome, BattleRewards, PlayerCommand, RiderMods, Side, Stance,
 };
 use iron_fauna::data::graftware::GraftKind;
+use iron_fauna::data::settlement::DuelUnitDef;
 use iron_fauna::data::species::{LimbArchetype, SizeClass, WeightClass};
 use iron_fauna::data::world::{MapKind, TileKind};
 use iron_fauna::data::GameData;
@@ -29,6 +30,73 @@ fn spec(species: &str, side: Side, grafts: Vec<(&str, usize, &str)>) -> UnitSpec
             .map(|(limb, slot, graft)| (limb.to_owned(), slot, graft.to_owned(), None))
             .collect(),
     }
+}
+
+fn reference_player() -> Vec<UnitSpec> {
+    vec![
+        spec(
+            "ferrobruin",
+            Side::Player,
+            vec![
+                ("back", 0, "bolt_cannon"),
+                ("arm_l", 0, "ember_spitter"),
+                ("arm_r", 0, "basalt_carapace"),
+                ("haunch_l", 0, "shield_membrane"),
+            ],
+        ),
+        spec("volpi", Side::Player, vec![("foreleg_l", 0, "spark_coil")]),
+    ]
+}
+
+fn enemy_specs(name: &str, units: &[DuelUnitDef]) -> Vec<UnitSpec> {
+    units
+        .iter()
+        .enumerate()
+        .map(|(index, unit)| UnitSpec {
+            species_id: unit.species.clone(),
+            name: unit
+                .name
+                .clone()
+                .unwrap_or_else(|| format!("{} {}", name, index + 1)),
+            side: Side::Enemy,
+            creature_id: None,
+            bond: 0.0,
+            stance: Stance::Aggressive,
+            grafts: unit
+                .grafts
+                .iter()
+                .map(|graft| (graft.limb.clone(), graft.slot, graft.graft.clone(), None))
+                .collect(),
+        })
+        .collect()
+}
+
+fn battle_terminates(
+    data: &GameData,
+    enemy: &[UnitSpec],
+    context: BattleContext,
+    seed: u64,
+) -> bool {
+    let mut battle = match Battle::new(
+        data,
+        context,
+        &reference_player(),
+        enemy,
+        RiderMods::neutral(),
+        seed,
+    ) {
+        Ok(battle) => battle,
+        Err(_) => return false,
+    };
+    battle.rider.mounted_on = None;
+    for _ in 0..12_000 {
+        battle.update(data, 0.05);
+        battle.drain_events();
+        if battle.over() {
+            return true;
+        }
+    }
+    false
 }
 
 #[test]
@@ -211,6 +279,107 @@ fn quests_and_world_verdicts_follow_their_lifecycle() {
 }
 
 #[test]
+fn regional_bounties_only_progress_in_their_authored_region() {
+    let data = GameData::load().unwrap();
+    let mut session = GameSession::new_game(&data);
+    for (quest_id, region) in [
+        ("bounty_mirrormere", "mirrormere"),
+        ("bounty_stormcap", "stormcap"),
+        ("bounty_ashvein", "ashvein"),
+        ("bounty_sporefen", "sporefen"),
+        ("bounty_bonewhite", "bonewhite"),
+    ] {
+        let quest = data.quests.get(quest_id).unwrap();
+        assert_eq!(quest.objective.region.as_deref(), Some(region));
+        assert!(quest::start(&mut session, &data, quest_id).is_some());
+        quest::advance_subdue_in_region(
+            &mut session,
+            &data,
+            quest.objective.count,
+            Some("wrong_region"),
+        );
+        assert!(!session.quests.is_ready(quest_id));
+        quest::advance_subdue_in_region(&mut session, &data, quest.objective.count, Some(region));
+        assert!(session.quests.is_ready(quest_id));
+        assert!(!quest::complete(&mut session, &data, quest_id).is_empty());
+    }
+}
+
+#[test]
+fn every_factory_guard_party_reaches_a_definite_outcome() {
+    let data = GameData::load().unwrap();
+    for (id, factory) in data.factories.iter() {
+        let enemy = enemy_specs(&factory.name, &factory.heart_guard);
+        for seed in [1_u64, 7, 101] {
+            assert!(
+                battle_terminates(&data, &enemy, BattleContext::FactoryDismantle, seed),
+                "factory {id} heart guard did not terminate with seed {seed}"
+            );
+        }
+    }
+}
+
+#[test]
+fn every_duelist_party_reaches_a_definite_outcome() {
+    let data = GameData::load().unwrap();
+    for (_, settlement) in data.settlements.iter() {
+        for duelist in &settlement.duelists {
+            let enemy = enemy_specs(&duelist.name, &duelist.party);
+            for seed in [3_u64, 55] {
+                assert!(
+                    battle_terminates(&data, &enemy, BattleContext::Duel, seed),
+                    "duelist {} did not terminate with seed {seed}",
+                    duelist.id
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn reference_party_clears_early_wild_packs() {
+    let data = GameData::load().unwrap();
+    let packs = [
+        vec!["bumblit", "bumblit"],
+        vec!["thistlin"],
+        vec!["quillow", "volpi"],
+    ];
+    for (index, pack) in packs.into_iter().enumerate() {
+        let enemy: Vec<UnitSpec> = pack
+            .into_iter()
+            .map(|species| spec(species, Side::Enemy, Vec::new()))
+            .collect();
+        let mut wins = 0;
+        for seed in [2_u64, 9, 40, 77] {
+            let mut battle = Battle::new(
+                &data,
+                BattleContext::WildSubdue,
+                &reference_player(),
+                &enemy,
+                RiderMods::neutral(),
+                seed,
+            )
+            .unwrap();
+            battle.rider.mounted_on = None;
+            for _ in 0..12_000 {
+                battle.update(&data, 0.05);
+                battle.drain_events();
+                if battle.over() {
+                    break;
+                }
+            }
+            if matches!(battle.outcome, Some(BattleOutcome::Victory(_))) {
+                wins += 1;
+            }
+        }
+        assert!(
+            wins >= 3,
+            "early wild pack {index} won only {wins}/4 trials"
+        );
+    }
+}
+
+#[test]
 fn duel_rules_protect_equipped_parts_and_update_rank() {
     let data = GameData::load().unwrap();
     let mut session = GameSession::new_game(&data);
@@ -334,8 +503,9 @@ fn location_state_is_serializable_for_a_midgame_save() {
 
 #[test]
 fn weight_classes_and_size_costs_are_ordered() {
+    let data = GameData::load().unwrap();
     assert!(WeightClass::Light < WeightClass::Medium);
     assert!(WeightClass::Medium < WeightClass::Heavy);
-    assert_eq!(SizeClass::Small.slot_cost(), 1);
-    assert_eq!(SizeClass::Huge.slot_cost(), 4);
+    assert_eq!(SizeClass::Small.slot_cost(&data.balance), 1);
+    assert_eq!(SizeClass::Huge.slot_cost(&data.balance), 5);
 }

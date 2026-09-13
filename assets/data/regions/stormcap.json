@@ -310,6 +310,34 @@
           "name": "Climber Isolde",
           "dialogue": [
             {
+              "when": { "quest_ready": "bounty_stormcap" },
+              "lines": [
+                "Four cores brought down without a body lost. That is a weather report I can live with.",
+                "Take the storm barb. Keep it grounded better than the Spire kept its promises."
+              ],
+              "complete_quest": "bounty_stormcap"
+            },
+            {
+              "when": { "quest_active": "bounty_stormcap" },
+              "lines": [
+                "The shelf still has four wild bodies too many. Count them down the mountain and come back breathing."
+              ]
+            },
+            {
+              "when": { "quest_done": "bounty_stormcap" },
+              "lines": [
+                "The cloudbreak tally stands. For one morning, I can count clouds instead of shells."
+              ]
+            },
+            {
+              "when": { "quest_none": "bounty_stormcap" },
+              "lines": [
+                "The Spire's shelf is thick with wild creatures. Subdue four in Stormcap before they fall into the roads.",
+                "Bring me a count, not trophies. The cores are the point."
+              ],
+              "start_quest": "bounty_stormcap"
+            },
+            {
               "lines": [
                 "The shelf's crawling with grafted things again \u2014 and these ones weren't born up there, they were MADE. By us. By what we brought back."
               ],

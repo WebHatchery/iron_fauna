@@ -54,7 +54,7 @@ impl Roster {
 
     pub fn slots_used(&self, data: &GameData) -> u32 {
         self.party_members()
-            .map(|c| c.species(data).size.slot_cost())
+            .map(|c| c.species(data).size.slot_cost(&data.balance))
             .sum()
     }
 
@@ -67,7 +67,7 @@ impl Roster {
     /// Adds a creature to the roster; joins the party if its size fits the
     /// remaining slot budget, otherwise it goes to storage.
     pub fn acquire(&mut self, data: &GameData, creature: CreatureInstance) -> AcquireResult {
-        let cost = creature.species(data).size.slot_cost();
+        let cost = creature.species(data).size.slot_cost(&data.balance);
         let id = creature.id;
         let to_party = cost <= self.slots_free(data);
         self.creatures.push(creature);
@@ -87,7 +87,7 @@ impl Roster {
         let Some(creature) = self.creature(id) else {
             return false;
         };
-        if creature.species(data).size.slot_cost() > self.slots_free(data) {
+        if creature.species(data).size.slot_cost(&data.balance) > self.slots_free(data) {
             return false;
         }
         self.party.push(id);

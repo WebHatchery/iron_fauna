@@ -1,5 +1,15 @@
 {
   "party_slot_budget": 6,
+  "party_slot_cost": { "small": 1, "medium": 2, "large": 3, "huge": 5 },
+  "power_budget": {
+    "total": 100.0,
+    "power_per_point": 0.35,
+    "speed_per_point": 0.15,
+    "extra_limb_cost": 4.0,
+    "natural_flight_cost": 18.0,
+    "innate_armor_per_point": 0.5,
+    "size_cost": { "small": 0.0, "medium": 8.0, "large": 18.0, "huge": 30.0 }
+  },
   "curves": {
     "power_capacity_mult": 1.6,
     "vigor_base": 40.0,
@@ -49,11 +59,11 @@
     "salvage_drop_chance": 0.6,
     "hop_transit_time": 1.2,
     "exposed_core_damage_mult": 1.5,
-    "weapon_damage_mult": 1.6,
+    "weapon_damage_mult": 1.5,
     "graft_spill_frac": 0.35,
     "natural_attack_per_power": 0.35,
     "natural_attack_cooldown": 2.2,
-    "element_synergy_mult": 1.25,
+    "element_synergy_mult": 1.2,
     "graft_hp": { "light": 25.0, "medium": 45.0, "heavy": 70.0 }
   },
   "world": {

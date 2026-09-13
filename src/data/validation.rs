@@ -3,11 +3,11 @@
 use super::balance::BalanceConfig;
 use super::graftware::GraftKind;
 use super::item::ConsumableEffect;
-use super::settlement::DuelGraftFit;
 use super::species::LimbArchetype;
 use super::{GameConfig, GameData};
-use macroquad_toolkit::assets::TextureConfig;
 use std::collections::HashSet;
+
+mod factories;
 
 pub(super) fn validate(data: &GameData) -> Result<(), String> {
     validate_config(&data.config)?;
@@ -19,8 +19,8 @@ pub(super) fn validate(data: &GameData) -> Result<(), String> {
     validate_quests(data)?;
     validate_world(data)?;
     validate_settlements(data)?;
-    validate_factories(data)?;
-    validate_textures(&data.texture_manifest)
+    factories::validate_factories(data)?;
+    factories::validate_textures(&data.texture_manifest)
 }
 
 fn validate_config(config: &GameConfig) -> Result<(), String> {
@@ -148,6 +148,37 @@ fn fraction(label: &str, value: f32) -> Result<(), String> {
 }
 
 fn validate_balance(balance: &BalanceConfig) -> Result<(), String> {
+    if balance.party_slot_budget == 0 {
+        return Err("content validation: balance.party_slot_budget must be > 0".to_owned());
+    }
+    for (name, value) in [
+        ("small", balance.party_slot_cost.small),
+        ("medium", balance.party_slot_cost.medium),
+        ("large", balance.party_slot_cost.large),
+        ("huge", balance.party_slot_cost.huge),
+    ] {
+        if value == 0 || value > balance.party_slot_budget {
+            return Err(format!(
+                "content validation: balance.party_slot_cost.{name} must fit the party budget"
+            ));
+        }
+    }
+    let budget = &balance.power_budget;
+    for (name, value) in [
+        ("total", budget.total),
+        ("power_per_point", budget.power_per_point),
+        ("speed_per_point", budget.speed_per_point),
+        ("extra_limb_cost", budget.extra_limb_cost),
+        ("natural_flight_cost", budget.natural_flight_cost),
+        ("innate_armor_per_point", budget.innate_armor_per_point),
+        ("size_cost.small", budget.size_cost.small),
+        ("size_cost.medium", budget.size_cost.medium),
+        ("size_cost.large", budget.size_cost.large),
+        ("size_cost.huge", budget.size_cost.huge),
+    ] {
+        non_negative(&format!("balance.power_budget.{name}"), value)?;
+    }
+    positive("balance.power_budget.total", budget.total)?;
     if balance.party_slot_budget == 0 {
         return Err("content validation: balance.party_slot_budget must be > 0".to_owned());
     }
@@ -295,6 +326,13 @@ fn validate_species(data: &GameData) -> Result<(), String> {
                 "content validation: species '{id}' has invalid power, speed, or tier"
             ));
         }
+        let budget_cost = species.power_budget_cost(&data.balance);
+        if budget_cost > data.balance.power_budget.total + 0.001 {
+            return Err(format!(
+                "content validation: species '{id}' exceeds chassis power budget ({budget_cost:.1}/{:.1})",
+                data.balance.power_budget.total
+            ));
+        }
         if species.limbs.is_empty() {
             return Err(format!("content validation: species '{id}' has no limbs"));
         }
@@ -404,6 +442,13 @@ fn validate_quests(data: &GameData) -> Result<(), String> {
             return Err(format!(
                 "content validation: quest '{id}' has negative scrip reward"
             ));
+        }
+        if let Some(region) = &quest.objective.region {
+            if !data.world.regions.iter().any(|entry| entry.id == *region) {
+                return Err(format!(
+                    "content validation: quest '{id}' references unknown region '{region}'"
+                ));
+            }
         }
         for graft in &quest.reward_grafts {
             if !data.graftware.contains(graft) {
@@ -653,120 +698,13 @@ fn validate_settlements(data: &GameData) -> Result<(), String> {
                 }
             }
             for unit in &duelist.party {
-                validate_unit_grafts(
+                factories::validate_unit_grafts(
                     data,
                     &format!("duelist '{}'", duelist.id),
                     &unit.species,
                     &unit.grafts,
                 )?;
             }
-        }
-    }
-    Ok(())
-}
-
-fn validate_factories(data: &GameData) -> Result<(), String> {
-    for (id, factory) in data.factories.iter() {
-        if factory.id != *id
-            || data.world.region(&factory.region).is_none()
-            || factory.floors.is_empty()
-            || factory.heart_guard.is_empty()
-            || factory.grow_cost <= 0
-        {
-            return Err(format!(
-                "content validation: factory '{id}' has incomplete setup"
-            ));
-        }
-        let mut floor_ids = HashSet::new();
-        for (index, floor) in factory.floors.iter().enumerate() {
-            if !floor_ids.insert(floor.id.as_str()) {
-                return Err(format!(
-                    "content validation: factory '{id}' has duplicate floor '{}'",
-                    floor.id
-                ));
-            }
-            if index + 1 == factory.floors.len() && floor.rows.iter().all(|row| !row.contains('H'))
-            {
-                return Err(format!(
-                    "content validation: factory '{id}' has a heartless deepest floor"
-                ));
-            }
-        }
-        for species in &factory.grows {
-            if !data.species.contains(species) {
-                return Err(format!(
-                    "content validation: factory '{id}' grows unknown species '{species}'"
-                ));
-            }
-        }
-        for unit in &factory.heart_guard {
-            validate_unit_grafts(
-                data,
-                &format!("factory '{id}' guard"),
-                &unit.species,
-                &unit.grafts,
-            )?;
-        }
-    }
-    Ok(())
-}
-
-fn validate_unit_grafts(
-    data: &GameData,
-    context: &str,
-    species_id: &str,
-    grafts: &[DuelGraftFit],
-) -> Result<(), String> {
-    let species = data.species.get(species_id).ok_or_else(|| {
-        format!("content validation: {context} references unknown species '{species_id}'")
-    })?;
-    let mut mounts = HashSet::new();
-    for graft in grafts {
-        let limb = species.limb(&graft.limb).ok_or_else(|| {
-            format!(
-                "content validation: {context} references unknown limb '{}'",
-                graft.limb
-            )
-        })?;
-        let mount_class = limb.mounts.get(graft.slot).ok_or_else(|| {
-            format!(
-                "content validation: {context} references missing mount '{}'/{}",
-                graft.limb, graft.slot
-            )
-        })?;
-        if !mounts.insert((graft.limb.as_str(), graft.slot)) {
-            return Err(format!(
-                "content validation: {context} mounts two grafts at '{}'/{}",
-                graft.limb, graft.slot
-            ));
-        }
-        let def = data.graftware.get(&graft.graft).ok_or_else(|| {
-            format!(
-                "content validation: {context} references unknown graft '{}'",
-                graft.graft
-            )
-        })?;
-        if def.weight > *mount_class || species.power < def.min_power {
-            return Err(format!(
-                "content validation: {context} cannot fit graft '{}' on '{}'/{}",
-                graft.graft, graft.limb, graft.slot
-            ));
-        }
-    }
-    Ok(())
-}
-
-fn validate_textures(textures: &[TextureConfig]) -> Result<(), String> {
-    let mut keys = HashSet::new();
-    for texture in textures {
-        if texture.key.trim().is_empty()
-            || texture.path.trim().is_empty()
-            || !keys.insert(texture.key.as_str())
-        {
-            return Err(format!(
-                "content validation: texture manifest has duplicate or empty key '{}'",
-                texture.key
-            ));
         }
     }
     Ok(())
