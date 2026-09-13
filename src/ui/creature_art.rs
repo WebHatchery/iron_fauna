@@ -180,7 +180,7 @@ fn render(cx: f32, cy: f32, u: f32, species: &SpeciesDef, grafts: &[GraftVisual]
     }
 
     if species.natural_flight {
-        draw_wings(cx, cy, u, &pal, &mut rng);
+        draw_wings(cx, cy, u, &pal);
     }
     if has_tail {
         draw_tail(cx, cy, u, &pal, &mut rng);
@@ -190,7 +190,7 @@ fn render(cx: f32, cy: f32, u: f32, species: &SpeciesDef, grafts: &[GraftVisual]
     if has_arms {
         draw_arms(cx, cy, u, w, &pal);
     }
-    draw_head(cx, cy, u, species, &pal, &mut rng);
+    draw_head(cx, cy, u, species, &pal);
 
     // Grafts read as full-colour hardware — only on a living, coloured body.
     if mode == Mode::Normal {
@@ -276,7 +276,7 @@ fn draw_tail(cx: f32, cy: f32, u: f32, pal: &Palette, rng: &mut Rng) {
     }
 }
 
-fn draw_wings(cx: f32, cy: f32, u: f32, pal: &Palette, _rng: &mut Rng) {
+fn draw_wings(cx: f32, cy: f32, u: f32, pal: &Palette) {
     let membrane = if pal.silhouette {
         pal.base
     } else {
@@ -297,11 +297,11 @@ fn draw_triangle_lines(a: Vec2, b: Vec2, c: Vec2, thick: f32, color: Color) {
     draw_line(c.x, c.y, a.x, a.y, thick, color);
 }
 
-fn draw_head(cx: f32, cy: f32, u: f32, species: &SpeciesDef, pal: &Palette, rng: &mut Rng) {
+fn draw_head(cx: f32, cy: f32, u: f32, species: &SpeciesDef, pal: &Palette) {
     let hr = 0.4 * u;
     let hy = cy - 0.52 * u;
     // Ears / horns by temperament, chosen deterministically.
-    draw_head_crest(cx, hy, hr, species, pal, rng);
+    draw_head_crest(cx, hy, hr, species, pal);
     draw_circle(cx, hy, hr, lighten(pal.base, 0.03));
     draw_circle_lines(cx, hy, hr, 2.0, pal.line);
     if pal.silhouette {
@@ -331,7 +331,7 @@ fn draw_head(cx: f32, cy: f32, u: f32, species: &SpeciesDef, pal: &Palette, rng:
     );
 }
 
-fn draw_head_crest(cx: f32, hy: f32, hr: f32, species: &SpeciesDef, pal: &Palette, rng: &mut Rng) {
+fn draw_head_crest(cx: f32, hy: f32, hr: f32, species: &SpeciesDef, pal: &Palette) {
     use crate::data::species::Temperament::*;
     let horn = darken(pal.base, 0.22);
     let inner = mix(pal.base, Color::new(0.95, 0.6, 0.62, 1.0), 0.5);
@@ -375,7 +375,6 @@ fn draw_head_crest(cx: f32, hy: f32, hr: f32, species: &SpeciesDef, pal: &Palett
             }
         }
     }
-    let _ = rng;
 }
 
 /// Anchor offset (from centre, in units) and outward direction for a region.

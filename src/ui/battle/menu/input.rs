@@ -5,16 +5,29 @@
 use super::{BattleScreen, RootCmd, Screen};
 use crate::combat::{PlayerCommand, Side, Stance, WeaponRef};
 use crate::data::GameData;
+use crate::ui::{logical_mouse_position, logical_mouse_released};
 use macroquad::prelude::*;
+use macroquad_toolkit::ui::RectExt;
 
 impl BattleScreen {
     pub(in crate::ui::battle) fn handle_menu_input(&mut self, data: &GameData) {
-        let up = is_key_pressed(KeyCode::Up);
-        let down = is_key_pressed(KeyCode::Down);
-        let confirm = is_key_pressed(KeyCode::Enter)
+        let up = is_key_pressed(KeyCode::Up) || logical_mouse_released(Self::touch_up_rect());
+        let down = is_key_pressed(KeyCode::Down) || logical_mouse_released(Self::touch_down_rect());
+        let mut confirm = is_key_pressed(KeyCode::Enter)
             || is_key_pressed(KeyCode::KpEnter)
             || is_key_pressed(KeyCode::Z);
-        let back = is_key_pressed(KeyCode::Escape) || is_key_pressed(KeyCode::Backspace);
+        let back = is_key_pressed(KeyCode::Escape)
+            || is_key_pressed(KeyCode::Backspace)
+            || logical_mouse_released(Self::touch_back_rect());
+
+        if let Some(row) = self.touch_menu_row(data, logical_mouse_position()) {
+            match self.menu.screen {
+                Screen::Target => self.menu.part_cursor = row,
+                _ => self.menu.cursor = row,
+            }
+            confirm = true;
+        }
+        confirm |= logical_mouse_released(Self::touch_select_rect());
 
         match self.menu.screen {
             Screen::Root => self.input_root(data, up, down, confirm, back),
@@ -25,6 +38,43 @@ impl BattleScreen {
             Screen::Hop => self.input_hop(data, up, down, confirm, back),
             Screen::Stance => self.input_stance(data, up, down, confirm, back),
         }
+    }
+
+    fn touch_up_rect() -> Rect {
+        Rect::new(470.0, 570.0, 86.0, 34.0)
+    }
+
+    fn touch_down_rect() -> Rect {
+        Rect::new(566.0, 570.0, 86.0, 34.0)
+    }
+
+    fn touch_back_rect() -> Rect {
+        Rect::new(662.0, 570.0, 86.0, 34.0)
+    }
+
+    fn touch_select_rect() -> Rect {
+        Rect::new(758.0, 570.0, 108.0, 34.0)
+    }
+
+    fn touch_menu_row(&self, data: &GameData, mouse: Vec2) -> Option<usize> {
+        let (_, rows, _, hint) = self.menu_rows(data);
+        let panel_h =
+            66.0 + rows.len().max(1) as f32 * 26.0 + if hint.is_some() { 22.0 } else { 0.0 };
+        let rect = Rect::new(
+            24.0,
+            crate::ui::LOGICAL_HEIGHT - panel_h - 24.0,
+            430.0,
+            panel_h,
+        );
+        rows.iter().enumerate().find_map(|(i, _)| {
+            let row = Rect::new(
+                rect.x + 8.0,
+                rect.y + 40.0 + i as f32 * 26.0,
+                rect.w - 16.0,
+                24.0,
+            );
+            row.contains_point(mouse).then_some(i)
+        })
     }
 
     fn step_cursor(cursor: &mut usize, len: usize, up: bool, down: bool) {

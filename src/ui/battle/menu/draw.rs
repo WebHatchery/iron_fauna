@@ -4,6 +4,7 @@
 use super::{BattleScreen, Part, Screen};
 use crate::combat::{Side, WeaponRef};
 use crate::data::GameData;
+use crate::ui::{logical_mouse_position, menu_button};
 use macroquad::prelude::*;
 use macroquad_toolkit::prelude::*;
 use macroquad_toolkit::ui::draw_ui_text_ex;
@@ -73,11 +74,24 @@ impl BattleScreen {
                 TextStyle::new(13.0, dark::TEXT_DIM).params(),
             );
         }
+        let mouse = logical_mouse_position();
+        menu_button(Rect::new(470.0, 570.0, 86.0, 34.0), "UP", true, mouse);
+        menu_button(Rect::new(566.0, 570.0, 86.0, 34.0), "DOWN", true, mouse);
+        menu_button(
+            Rect::new(662.0, 570.0, 86.0, 34.0),
+            "BACK",
+            !self.menu.forced_hop,
+            mouse,
+        );
+        menu_button(Rect::new(758.0, 570.0, 108.0, 34.0), "SELECT", true, mouse);
     }
 
     /// (title, [(row label, enabled)], cursor index, optional hint) for the
     /// current screen.
-    fn menu_rows(&self, data: &GameData) -> (String, Vec<(String, bool)>, usize, Option<String>) {
+    pub(super) fn menu_rows(
+        &self,
+        data: &GameData,
+    ) -> (String, Vec<(String, bool)>, usize, Option<String>) {
         match self.menu.screen {
             Screen::Root => {
                 let name = self
@@ -94,7 +108,7 @@ impl BattleScreen {
                     format!("{} — orders", name),
                     rows,
                     self.menu.cursor,
-                    Some("[Up/Dn] choose · [Enter] confirm · [Esc] let it ride".to_owned()),
+                    Some(data.config.controls.battle_menu.clone()),
                 )
             }
             Screen::Weapon => {

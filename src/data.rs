@@ -77,6 +77,17 @@ pub struct GameConfig {
     pub save_slot: String,
     pub version: String,
     pub starter: StarterConfig,
+    pub controls: ControlsConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ControlsConfig {
+    pub overworld: String,
+    pub dialogue: String,
+    pub battle: String,
+    pub battle_menu: String,
+    pub codex: String,
+    pub outcome: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -9,7 +9,9 @@ use crate::model::story;
 use crate::model::warunit::war_unit_grafts;
 use crate::model::worldstate::{RegionMood, WorldState};
 use crate::state::GameSession;
-use crate::ui::{LOGICAL_HEIGHT, LOGICAL_WIDTH};
+use crate::ui::{
+    logical_mouse_position, logical_mouse_released, menu_button, LOGICAL_HEIGHT, LOGICAL_WIDTH,
+};
 use crate::util::Rng;
 use macroquad::prelude::*;
 use macroquad_toolkit::assets::AssetManager;
@@ -20,6 +22,15 @@ mod tiles;
 use tiles::draw_tile;
 
 const TILE: f32 = 40.0;
+
+const MOVE_UP: Rect = Rect::new(1050.0, 580.0, 48.0, 34.0);
+const MOVE_LEFT: Rect = Rect::new(996.0, 618.0, 48.0, 34.0);
+const MOVE_DOWN: Rect = Rect::new(1050.0, 618.0, 48.0, 34.0);
+const MOVE_RIGHT: Rect = Rect::new(1104.0, 618.0, 48.0, 34.0);
+const INTERACT: Rect = Rect::new(1164.0, 580.0, 96.0, 34.0);
+const OPEN_MENU: Rect = Rect::new(1036.0, 18.0, 96.0, 32.0);
+const OPEN_CODEX: Rect = Rect::new(1140.0, 18.0, 112.0, 32.0);
+const CONTINUE_DIALOGUE: Rect = Rect::new(1060.0, 584.0, 160.0, 32.0);
 
 pub enum OverworldResult {
     Continue,
@@ -86,10 +97,14 @@ impl OverworldScreen {
         session: &mut GameSession,
         dt: f32,
     ) -> OverworldResult {
-        if is_key_pressed(KeyCode::Escape) && self.dialogue.is_none() {
+        if (is_key_pressed(KeyCode::Escape) || logical_mouse_released(OPEN_MENU))
+            && self.dialogue.is_none()
+        {
             return OverworldResult::BackToMenu;
         }
-        if is_key_pressed(KeyCode::Tab) && self.dialogue.is_none() {
+        if (is_key_pressed(KeyCode::Tab) || logical_mouse_released(OPEN_CODEX))
+            && self.dialogue.is_none()
+        {
             return OverworldResult::OpenCodex;
         }
 
@@ -109,6 +124,7 @@ impl OverworldScreen {
             if is_key_pressed(KeyCode::Space)
                 || is_key_pressed(KeyCode::Enter)
                 || is_key_pressed(KeyCode::Escape)
+                || logical_mouse_released(CONTINUE_DIALOGUE)
             {
                 dialog.index += 1;
                 if dialog.index >= dialog.lines.len() {
@@ -125,7 +141,10 @@ impl OverworldScreen {
         }
 
         // Interact with whatever we're facing.
-        if is_key_pressed(KeyCode::Space) || is_key_pressed(KeyCode::Enter) {
+        if is_key_pressed(KeyCode::Space)
+            || is_key_pressed(KeyCode::Enter)
+            || logical_mouse_released(INTERACT)
+        {
             let fx = session.location.x + self.facing.0;
             let fy = session.location.y + self.facing.1;
             if let Some(npc) = map.npc_at(fx, fy) {
@@ -168,7 +187,7 @@ impl OverworldScreen {
         }
 
         self.move_timer -= dt;
-        let dir = held_direction();
+        let dir = held_direction().or_else(touch_direction);
         if let Some(dir) = dir {
             self.facing = dir;
             if self.move_timer <= 0.0 {
@@ -347,8 +366,21 @@ impl OverworldScreen {
 
         self.draw_hud(data, session, map);
         if let Some(dialog) = &self.dialogue {
-            draw_dialogue(dialog);
+            draw_dialogue(dialog, &data.config.controls.dialogue);
+        } else {
+            self.draw_touch_controls();
         }
+    }
+
+    fn draw_touch_controls(&self) {
+        let mouse = logical_mouse_position();
+        menu_button(MOVE_UP, "▲", true, mouse);
+        menu_button(MOVE_LEFT, "◀", true, mouse);
+        menu_button(MOVE_DOWN, "▼", true, mouse);
+        menu_button(MOVE_RIGHT, "▶", true, mouse);
+        menu_button(INTERACT, "INTERACT", true, mouse);
+        menu_button(OPEN_MENU, "MENU", true, mouse);
+        menu_button(OPEN_CODEX, "CODEX", true, mouse);
     }
 
     fn draw_hud(&self, data: &GameData, session: &GameSession, map: &MapDef) {
@@ -386,7 +418,7 @@ impl OverworldScreen {
             Color::new(0.0, 0.0, 0.0, 0.45),
         );
         draw_ui_text_ex(
-            "WASD/arrows move · Space interact · Esc menu",
+            &data.config.controls.overworld,
             22.0,
             LOGICAL_HEIGHT - 19.0,
             TextStyle::new(15.0, dark::TEXT_DIM).params(),
@@ -415,6 +447,24 @@ fn held_direction() -> Option<(i32, i32)> {
         None
     } else {
         Some((dx, dy))
+    }
+}
+
+fn touch_direction() -> Option<(i32, i32)> {
+    let mouse = logical_mouse_position();
+    if !is_mouse_button_down(MouseButton::Left) {
+        return None;
+    }
+    if MOVE_UP.contains_point(mouse) {
+        Some((0, -1))
+    } else if MOVE_LEFT.contains_point(mouse) {
+        Some((-1, 0))
+    } else if MOVE_DOWN.contains_point(mouse) {
+        Some((0, 1))
+    } else if MOVE_RIGHT.contains_point(mouse) {
+        Some((1, 0))
+    } else {
+        None
     }
 }
 
@@ -505,7 +555,7 @@ fn roll_encounter(
     )
 }
 
-fn draw_dialogue(dialog: &DialogueBox) {
+fn draw_dialogue(dialog: &DialogueBox, control_hint: &str) {
     let rect = Rect::new(60.0, LOGICAL_HEIGHT - 170.0, LOGICAL_WIDTH - 120.0, 130.0);
     draw_surface(
         rect,
@@ -531,9 +581,15 @@ fn draw_dialogue(dialog: &DialogueBox) {
         );
     }
     draw_ui_text_ex(
-        "[Space] ▼",
-        rect.right() - 100.0,
+        control_hint,
+        rect.right() - 260.0,
         rect.bottom() - 14.0,
         TextStyle::new(14.0, dark::TEXT_DIM).params(),
+    );
+    menu_button(
+        CONTINUE_DIALOGUE,
+        "CONTINUE",
+        true,
+        logical_mouse_position(),
     );
 }

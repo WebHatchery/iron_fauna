@@ -63,7 +63,7 @@ impl BestiaryScreen {
             if is_hovered {
                 hovered = Some(sp);
             }
-            self.draw_cell(data, session, rect, sp, owned, is_hovered);
+            self.draw_cell(session, rect, sp, owned, is_hovered);
         }
 
         // Detail bar for the hovered species.
@@ -82,7 +82,6 @@ impl BestiaryScreen {
 
     fn draw_cell(
         &self,
-        data: &GameData,
         session: &GameSession,
         rect: Rect,
         sp: &SpeciesDef,
@@ -171,7 +170,6 @@ impl BestiaryScreen {
                 },
             );
         }
-        let _ = data;
     }
 
     fn draw_detail(

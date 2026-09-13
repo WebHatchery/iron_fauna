@@ -22,10 +22,11 @@ impl BattleScreen {
         };
         draw_ui_text_ex(
             &format!(
-                "{}   ·   {:.0}s   ·   pace: {}   [P] pause",
+                "{}   ·   {:.0}s   ·   pace: {}   ·   {}",
                 context,
                 self.battle.time,
-                self.pace.display_name()
+                self.pace.display_name(),
+                data.config.controls.battle
             ),
             18.0,
             26.0,
@@ -119,7 +120,7 @@ impl BattleScreen {
             Color::new(0.0, 0.0, 0.0, 0.55),
         );
         draw_ui_text_ex(
-            "PAUSED  —  [P] resume",
+            "PAUSED  —  touch RESUME or press P",
             LOGICAL_WIDTH * 0.5 - 110.0,
             LOGICAL_HEIGHT * 0.5,
             TextStyle::new(20.0, Color::new(0.9, 0.9, 0.85, 1.0)).params(),
@@ -171,7 +172,7 @@ impl BattleScreen {
             y += 28.0;
         }
         draw_ui_text_ex(
-            "[Enter] continue",
+            &data.config.controls.outcome,
             LOGICAL_WIDTH * 0.5 - 70.0,
             y + 30.0,
             TextStyle::new(16.0, dark::TEXT_DIM).params(),

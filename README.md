@@ -53,16 +53,18 @@ to face the keeper you made possible.
 
 ## Controls
 
-**Overworld / settlements:** `WASD` / arrows move · `Space` / `Enter` interact
-(talk, enter a door) · `Tab` open the **Codex** (status, corelings, party order,
-quests, journal) · `Esc` menu.
+**Overworld / settlements:** tap the visible `MOVE` arrows to travel, `INTERACT`
+to talk or enter a door, `MENU` to return, and `CODEX` to open the ledger. The
+keyboard shortcuts are `WASD` / arrows, `Space` / `Enter`, `Esc`, and `Tab`.
+Dialogue has a visible `CONTINUE` button and also accepts `Space` / `Enter`.
 
-**Battle:** `Q`/`W`/`E`/`R` fire weapon mounts · `A` natural attack · `S` utility ·
-`D` reinforce · `G` regrow a severed limb · `H` hop to another mount ·
-`C` aim mode (arrows pick a limb region, `X` re-centres) · `I` items (potions,
-and loading ammo — a reload that takes a turn) · `Tab` / `Up` / `Down` switch
-target · `1`–`6` toggle a creature's stance · `P` pause · `Space` let a
-Wait-paused fight ride.
+**Battle:** tap `COMMANDS` to open the order panel, tap a row or use `UP` /
+`DOWN`, then tap `SELECT`; `BACK` returns to the previous panel. The target
+panel shows every enemy part and supports tapping a part or switching foes with
+the left/right keys. Forced rider hops use the same visible order panel. Tap
+`PAUSE` / `RESUME`, and tap `CONTINUE` after the outcome. Keyboard shortcuts are
+`Enter` / `Space` to open or confirm, arrows to navigate, `Tab` or left/right
+to switch targets, `Esc` / `Backspace` to go back, and `P` to pause.
 
 ## Run / test
 

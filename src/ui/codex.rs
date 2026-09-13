@@ -114,7 +114,7 @@ impl CodexScreen {
             }
         }
 
-        self.draw_tab_bar(mouse, &mut actions);
+        self.draw_tab_bar(mouse, &mut actions, &data.config.controls.codex);
 
         // A dark surface for the body — the tab text is light-on-dark, so the
         // cream skin panel (great behind buttons) would wash it out here.
@@ -143,7 +143,7 @@ impl CodexScreen {
         actions
     }
 
-    fn draw_tab_bar(&self, mouse: Vec2, actions: &mut Vec<CodexAction>) {
+    fn draw_tab_bar(&self, mouse: Vec2, actions: &mut Vec<CodexAction>, control_hint: &str) {
         draw_ui_text_ex(
             "CODEX",
             28.0,
@@ -151,11 +151,19 @@ impl CodexScreen {
             TextStyle::new(30.0, Color::new(0.88, 0.86, 0.80, 1.0)).params(),
         );
         draw_ui_text_ex(
-            "[Tab] / [Esc] close   ·   [1-8] jump",
-            LOGICAL_WIDTH - 320.0,
+            control_hint,
+            LOGICAL_WIDTH - 470.0,
             44.0,
             TextStyle::new(15.0, dark::TEXT_DIM).params(),
         );
+        if menu_button(
+            Rect::new(LOGICAL_WIDTH - 188.0, 18.0, 160.0, 36.0),
+            "CLOSE CODEX",
+            true,
+            mouse,
+        ) {
+            actions.push(CodexAction::Close);
+        }
         let bw = 144.0;
         for (i, tab) in CodexTab::ALL.into_iter().enumerate() {
             let rect = Rect::new(28.0 + i as f32 * (bw + 8.0), 76.0, bw, 40.0);

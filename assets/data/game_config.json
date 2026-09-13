@@ -24,5 +24,13 @@
       { "item_id": "incendiary_rounds", "count": 2 }
     ],
     "journal_entry": "Took up the road — no family waiting, so the Hollow spends me freely."
+  },
+  "controls": {
+    "overworld": "Touch MOVE arrows · INTERACT · MENU · CODEX | keyboard: WASD/arrows, Space, Esc, Tab",
+    "dialogue": "Touch CONTINUE · Space / Enter",
+    "battle": "Touch COMMANDS and PAUSE · keyboard: Enter/Space and P",
+    "battle_menu": "Touch a row or UP/DOWN, then SELECT · BACK returns",
+    "codex": "Touch CLOSE CODEX · keyboard: Tab / Esc · 1-8 jump",
+    "outcome": "Touch CONTINUE · Enter / Space"
   }
 }

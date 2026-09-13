@@ -10,24 +10,28 @@
   ],
   "controls": [
     {
-      "key": "WASD / Arrows",
-      "desc": "Move / navigate"
+      "key": "MOVE arrows",
+      "desc": "Visible touch controls move through the overworld; WASD / arrows are optional shortcuts"
     },
     {
-      "key": "Space / Enter",
-      "desc": "Confirm / interact"
+      "key": "INTERACT / CONTINUE",
+      "desc": "Visible touch buttons talk, enter doors, and advance dialogue; Space / Enter are optional shortcuts"
     },
     {
-      "key": "Esc",
-      "desc": "Back / menu"
+      "key": "COMMANDS / SELECT",
+      "desc": "Visible battle buttons open the order panel, choose commands, target parts, hop, and set orders"
     },
     {
-      "key": "P",
-      "desc": "Pause battle"
+      "key": "PAUSE / RESUME",
+      "desc": "Visible battle control pauses or resumes the clock; P is an optional shortcut"
     },
     {
-      "key": "Tab",
-      "desc": "Rider hop targeting"
+      "key": "MENU / CODEX",
+      "desc": "Visible overworld navigation buttons return to the menu or open the Codex"
+    },
+    {
+      "key": "CONTINUE",
+      "desc": "Visible outcome button acknowledges the battle result"
     }
   ],
   "details": [

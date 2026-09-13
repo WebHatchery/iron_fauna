@@ -12,6 +12,9 @@
 use macroquad::prelude::*;
 use macroquad_toolkit::assets::AssetManager;
 use macroquad_toolkit::prelude::*;
+use macroquad_toolkit::ui::{
+    button_rect_enabled_styled_ex_at, ButtonStyle, ButtonTrigger, TextStyle as ToolkitTextStyle,
+};
 use std::cell::RefCell;
 
 #[derive(Clone)]
@@ -127,6 +130,22 @@ pub fn banner(rect: Rect, text: &str, size: f32) {
 /// A skinned push-button. Returns true on release-over. Mirrors the fallback
 /// `menu_button` contract so it drops in transparently.
 pub fn button(rect: Rect, text: &str, enabled: bool, mouse: Vec2) -> bool {
+    let interaction = button_rect_enabled_styled_ex_at(
+        rect,
+        "",
+        enabled,
+        &ButtonStyle {
+            normal: Color::new(0.0, 0.0, 0.0, 0.0),
+            hovered: Color::new(0.0, 0.0, 0.0, 0.0),
+            pressed: Color::new(0.0, 0.0, 0.0, 0.0),
+            border: Color::new(0.0, 0.0, 0.0, 0.0),
+            text_color: Color::new(0.0, 0.0, 0.0, 0.0),
+            disabled: Color::new(0.0, 0.0, 0.0, 0.0),
+        },
+        ToolkitTextStyle::new(1.0, Color::new(0.0, 0.0, 0.0, 0.0)),
+        ButtonTrigger::Release,
+        mouse,
+    );
     let hovered = enabled && rect.contains(mouse);
     let pressed = hovered && is_mouse_button_down(MouseButton::Left);
     SKIN.with(|s| {
@@ -159,5 +178,5 @@ pub fn button(rect: Rect, text: &str, enabled: bool, mouse: Vec2) -> bool {
             );
         }
     });
-    hovered && is_mouse_button_released(MouseButton::Left)
+    interaction
 }

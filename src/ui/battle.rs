@@ -14,7 +14,10 @@ use crate::combat::{Side, UnitId, WeaponRef};
 use crate::data::species::SizeClass;
 use crate::data::GameData;
 use crate::state::PaceSetting;
-use crate::ui::{creature_art, LOGICAL_HEIGHT, LOGICAL_WIDTH};
+use crate::ui::{
+    creature_art, logical_mouse_position, logical_mouse_released, menu_button, LOGICAL_HEIGHT,
+    LOGICAL_WIDTH,
+};
 use events_view::{describe_event, sfx_for_event};
 use macroquad::prelude::*;
 use macroquad_toolkit::prelude::*;
@@ -23,6 +26,9 @@ use menu::{MenuState, Screen};
 
 const GROUND_Y: f32 = 470.0;
 const LOG_LINES: usize = 6;
+const PAUSE_BUTTON: Rect = Rect::new(1090.0, 24.0, 150.0, 36.0);
+const COMMAND_BUTTON: Rect = Rect::new(1090.0, 66.0, 150.0, 36.0);
+const OUTCOME_BUTTON: Rect = Rect::new(1000.0, 570.0, 220.0, 44.0);
 
 pub enum BattleScreenResult {
     Continue,
@@ -101,7 +107,7 @@ impl BattleScreen {
             return self.update_outcome();
         }
 
-        if is_key_pressed(KeyCode::P) {
+        if is_key_pressed(KeyCode::P) || logical_mouse_released(PAUSE_BUTTON) {
             self.manual_pause = !self.manual_pause;
         }
 
@@ -114,7 +120,9 @@ impl BattleScreen {
         if !was_open
             && !self.manual_pause
             && self.commandable()
-            && (is_key_pressed(KeyCode::Enter) || is_key_pressed(KeyCode::Space))
+            && (is_key_pressed(KeyCode::Enter)
+                || is_key_pressed(KeyCode::Space)
+                || logical_mouse_released(COMMAND_BUTTON))
         {
             self.open_root();
         }
@@ -163,7 +171,10 @@ impl BattleScreen {
 
     fn update_outcome(&mut self) -> BattleScreenResult {
         self.outcome_shown = true;
-        if is_key_pressed(KeyCode::Enter) || is_key_pressed(KeyCode::Space) {
+        if is_key_pressed(KeyCode::Enter)
+            || is_key_pressed(KeyCode::Space)
+            || logical_mouse_released(OUTCOME_BUTTON)
+        {
             return BattleScreenResult::Finished;
         }
         BattleScreenResult::Continue
@@ -272,6 +283,7 @@ impl BattleScreen {
         }
         self.draw_floats();
         self.draw_hud(data);
+        self.draw_touch_controls();
         if self.menu.open {
             self.draw_menu(data);
         }
@@ -280,6 +292,22 @@ impl BattleScreen {
             self.draw_outcome(data);
         } else if self.manual_pause {
             self.draw_pause_banner();
+        }
+    }
+
+    fn draw_touch_controls(&self) {
+        let mouse = logical_mouse_position();
+        menu_button(
+            PAUSE_BUTTON,
+            if self.manual_pause { "RESUME" } else { "PAUSE" },
+            true,
+            mouse,
+        );
+        if !self.menu.open && self.commandable() && !self.manual_pause {
+            menu_button(COMMAND_BUTTON, "COMMANDS", true, mouse);
+        }
+        if self.battle.over() {
+            menu_button(OUTCOME_BUTTON, "CONTINUE", true, mouse);
         }
     }
 

@@ -17,10 +17,32 @@ use crate::data::GameData;
 use crate::state::GameSession;
 use macroquad::prelude::*;
 use macroquad_toolkit::prelude::*;
-use macroquad_toolkit::ui::{draw_ui_text_ex, RectExt, VirtualUi};
+use macroquad_toolkit::ui::{
+    button_rect_enabled_styled_ex_at, draw_ui_text_ex, ButtonStyle, ButtonTrigger, RectExt,
+    TextStyle as ToolkitTextStyle, VirtualUi,
+};
 
 pub const LOGICAL_WIDTH: f32 = 1280.0;
 pub const LOGICAL_HEIGHT: f32 = 720.0;
+
+/// Convert the physical pointer position into the game's fixed logical canvas.
+/// Update code uses this outside a `VirtualUi` draw frame for touch controls.
+pub fn logical_mouse_position() -> Vec2 {
+    let (width, height) = (screen_width().max(1.0), screen_height().max(1.0));
+    let mouse = mouse_position();
+    vec2(
+        mouse.0 * LOGICAL_WIDTH / width,
+        mouse.1 * LOGICAL_HEIGHT / height,
+    )
+}
+
+pub fn logical_mouse_down(rect: Rect) -> bool {
+    rect.contains_point(logical_mouse_position()) && is_mouse_button_down(MouseButton::Left)
+}
+
+pub fn logical_mouse_released(rect: Rect) -> bool {
+    rect.contains_point(logical_mouse_position()) && is_mouse_button_released(MouseButton::Left)
+}
 
 /// Intents the menu returns to the game loop.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -170,28 +192,12 @@ pub fn menu_button(rect: Rect, text: &str, enabled: bool, mouse: Vec2) -> bool {
     if skin::available() {
         return skin::button(rect, text, enabled, mouse);
     }
-    let hovered = enabled && rect.contains_point(mouse);
-    let pressed = hovered && is_mouse_button_down(MouseButton::Left);
-    let fill = if !enabled {
-        Color::new(0.10, 0.11, 0.13, 1.0)
-    } else if pressed {
-        Color::new(0.20, 0.26, 0.34, 1.0)
-    } else if hovered {
-        Color::new(0.16, 0.20, 0.27, 1.0)
-    } else {
-        Color::new(0.12, 0.14, 0.18, 1.0)
-    };
-    draw_surface(
+    button_rect_enabled_styled_ex_at(
         rect,
-        &SurfaceStyle::new(fill).with_border(1.0, Color::new(0.45, 0.52, 0.65, 0.6)),
-    );
-    draw_text_centered_in_box_ex(
         text,
-        rect.x + 8.0,
-        rect.y + if pressed { 2.0 } else { 0.0 },
-        rect.w - 16.0,
-        rect.h,
-        TextStyle::new(
+        enabled,
+        &ButtonStyle::default_dark(),
+        ToolkitTextStyle::new(
             18.0,
             if enabled {
                 dark::TEXT_BRIGHT
@@ -199,6 +205,7 @@ pub fn menu_button(rect: Rect, text: &str, enabled: bool, mouse: Vec2) -> bool {
                 dark::TEXT_DIM
             },
         ),
-    );
-    hovered && is_mouse_button_released(MouseButton::Left)
+        ButtonTrigger::Release,
+        mouse,
+    )
 }
