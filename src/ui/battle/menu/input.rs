@@ -114,7 +114,7 @@ impl BattleScreen {
                 self.menu.cursor = 0;
             }
             RootCmd::Reinforce => {
-                if self.battle.command(data, PlayerCommand::Reinforce) {
+                if crate::game::battle::issue(&mut self.battle, data, PlayerCommand::Reinforce) {
                     self.after_command();
                 }
             }
@@ -122,7 +122,11 @@ impl BattleScreen {
                 if let Some(id) = self.battle.ridden_unit() {
                     let limb = self.battle.units[id].limbs.iter().position(|l| l.severed);
                     if let Some(limb) = limb {
-                        if self.battle.command(data, PlayerCommand::Regrow { limb }) {
+                        if crate::game::battle::issue(
+                            &mut self.battle,
+                            data,
+                            PlayerCommand::Regrow { limb },
+                        ) {
                             self.after_command();
                         }
                     }
@@ -211,7 +215,7 @@ impl BattleScreen {
                 called,
             },
         };
-        if self.battle.command(data, cmd) {
+        if crate::game::battle::issue(&mut self.battle, data, cmd) {
             self.after_command();
         }
     }
@@ -273,7 +277,7 @@ impl BattleScreen {
         }
         if let Some(&to) = list.get(self.menu.cursor) {
             // BeginHop routes through the engine even while the rider is exposed.
-            if self.battle.command(data, PlayerCommand::BeginHop { to }) {
+            if crate::game::battle::issue(&mut self.battle, data, PlayerCommand::BeginHop { to }) {
                 self.after_command();
                 self.menu.forced_hop = false;
             }
@@ -296,9 +300,11 @@ impl BattleScreen {
                 Stance::Defensive => Stance::Aggressive,
             };
             // Orders are free to set — stay on the panel, don't consume the turn.
-            let _ = self
-                .battle
-                .command(data, PlayerCommand::SetStance { unit, stance });
+            let _ = crate::game::battle::issue(
+                &mut self.battle,
+                data,
+                PlayerCommand::SetStance { unit, stance },
+            );
         }
     }
 }

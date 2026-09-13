@@ -41,6 +41,20 @@ pub struct OutfitScreen {
     pub selected_slot: Option<(String, usize)>,
 }
 
+struct RosterRowContext<'a> {
+    data: &'a GameData,
+    mouse: Vec2,
+    actions: &'a mut Vec<OutfitAction>,
+    content: Rect,
+    slots_free: u32,
+    selected: Option<u64>,
+}
+
+struct MountInteraction<'a> {
+    mouse: Vec2,
+    actions: &'a mut Vec<OutfitAction>,
+}
+
 impl OutfitScreen {
     pub fn draw(
         &self,
@@ -115,8 +129,16 @@ impl OutfitScreen {
         let mut y = content.y + 40.0;
 
         let slots_free = roster.slots_free(data);
+        let mut row_context = RosterRowContext {
+            data,
+            mouse,
+            actions,
+            content,
+            slots_free,
+            selected: self.selected,
+        };
         for creature in roster.party_members() {
-            y = self.roster_row(data, mouse, actions, content, y, creature, true, slots_free);
+            y = self.roster_row(&mut row_context, y, creature, true);
         }
         y += 10.0;
         draw_ui_text_ex(
@@ -130,9 +152,7 @@ impl OutfitScreen {
         let stored: Vec<_> = roster.stored().collect();
         for creature in stored {
             any_stored = true;
-            y = self.roster_row(
-                data, mouse, actions, content, y, creature, false, slots_free,
-            );
+            y = self.roster_row(&mut row_context, y, creature, false);
             if y > content.bottom() - 40.0 {
                 break;
             }
@@ -147,22 +167,17 @@ impl OutfitScreen {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn roster_row(
         &self,
-        data: &GameData,
-        mouse: Vec2,
-        actions: &mut Vec<OutfitAction>,
-        content: Rect,
+        ctx: &mut RosterRowContext<'_>,
         y: f32,
         creature: &crate::model::creature::CreatureInstance,
         in_party: bool,
-        slots_free: u32,
     ) -> f32 {
-        let species = creature.species(data);
-        let row = Rect::new(content.x, y, content.w, 46.0);
-        let selected = self.selected == Some(creature.id);
-        let hovered = row.contains_point(mouse);
+        let species = creature.species(ctx.data);
+        let row = Rect::new(ctx.content.x, y, ctx.content.w, 46.0);
+        let selected = ctx.selected == Some(creature.id);
+        let hovered = row.contains_point(ctx.mouse);
         let fill = if selected {
             Color::new(0.18, 0.24, 0.32, 1.0)
         } else if hovered {
@@ -180,7 +195,7 @@ impl OutfitScreen {
         draw_ui_text_ex(
             &format!(
                 "{} ({})",
-                creature.display_name(data),
+                creature.display_name(ctx.data),
                 species.size.slot_cost()
             ),
             row.x + 32.0,
@@ -199,17 +214,17 @@ impl OutfitScreen {
             TextStyle::new(12.0, dark::TEXT_DIM).params(),
         );
         if hovered && is_mouse_button_released(MouseButton::Left) {
-            actions.push(OutfitAction::SelectCreature(creature.id));
+            ctx.actions.push(OutfitAction::SelectCreature(creature.id));
         }
         let btn = Rect::new(row.right() - 62.0, row.y + 8.0, 56.0, 30.0);
         if in_party {
-            if menu_button(btn, "Store", true, mouse) {
-                actions.push(OutfitAction::ToStorage(creature.id));
+            if menu_button(btn, "Store", true, ctx.mouse) {
+                ctx.actions.push(OutfitAction::ToStorage(creature.id));
             }
         } else {
-            let fits = species.size.slot_cost() <= slots_free;
-            if menu_button(btn, "Take", fits, mouse) {
-                actions.push(OutfitAction::ToParty(creature.id));
+            let fits = species.size.slot_cost() <= ctx.slots_free;
+            if menu_button(btn, "Take", fits, ctx.mouse) {
+                ctx.actions.push(OutfitAction::ToParty(creature.id));
             }
         }
         y + 52.0
@@ -242,7 +257,6 @@ impl OutfitScreen {
             );
             return;
         };
-        let species = creature.species(data);
         draw_surface_with_title(
             rect,
             Some(&format!("War-Body — {}", creature.display_name(data))),
@@ -255,8 +269,22 @@ impl OutfitScreen {
         // unequipping is the before/after of grafting in real time.
         self.draw_portrait(data, session, creature, content);
 
-        let mut y = content.y + 42.0;
+        let y = self.draw_summary(data, session, creature, content);
+        let mut interaction = MountInteraction { mouse, actions };
+        let y = self.draw_mounts(data, session, creature, content, y, &mut interaction);
+        self.draw_boosts(data, session, creature, content, y);
+        self.draw_rider_progress(session, content);
+    }
 
+    fn draw_summary(
+        &self,
+        data: &GameData,
+        session: &GameSession,
+        creature: &CreatureInstance,
+        content: Rect,
+    ) -> f32 {
+        let species = creature.species(data);
+        let mut y = content.y + 42.0;
         draw_ui_text_ex(
             &format!(
                 "{} · {} · {} · {}",
@@ -277,7 +305,6 @@ impl OutfitScreen {
             TextStyle::new(15.0, dark::TEXT_DIM).params(),
         );
         y += 20.0;
-        // Element synergy hint (`creature.md` §6).
         draw_ui_text_ex(
             &format!(
                 "{} chassis — {} graftware runs stronger here",
@@ -289,13 +316,9 @@ impl OutfitScreen {
             TextStyle::new(13.0, element_color(species.element)).params(),
         );
         y += 24.0;
-
-        // Live Power Capacity readout (`creature.md` §5).
         let capacity = species.derived(&data.balance).power_capacity;
         let draw_total = creature.total_power_draw(data, &session.profile.inventory);
         let over = creature.overdraw(data, &session.profile.inventory);
-        let frac = (draw_total / capacity).min(1.0);
-        // Leave the top-right clear for the war-body portrait.
         let bar = Rect::new(content.x, y, content.w - 168.0, 20.0);
         draw_rectangle(
             bar.x,
@@ -304,12 +327,17 @@ impl OutfitScreen {
             bar.h,
             Color::new(0.10, 0.11, 0.14, 1.0),
         );
-        let color = if over > 0.0 {
-            Color::new(0.85, 0.35, 0.25, 1.0)
-        } else {
-            Color::new(0.4, 0.65, 0.45, 1.0)
-        };
-        draw_rectangle(bar.x, bar.y, bar.w * frac, bar.h, color);
+        draw_rectangle(
+            bar.x,
+            bar.y,
+            bar.w * (draw_total / capacity).min(1.0),
+            bar.h,
+            if over > 0.0 {
+                Color::new(0.85, 0.35, 0.25, 1.0)
+            } else {
+                Color::new(0.4, 0.65, 0.45, 1.0)
+            },
+        );
         draw_ui_text_ex(
             &format!(
                 "Power Draw {:.0} / {:.0}{}",
@@ -325,12 +353,19 @@ impl OutfitScreen {
             bar.y + 15.0,
             TextStyle::new(13.0, dark::TEXT_BRIGHT).params(),
         );
-        y += 34.0;
-        // Drop below the portrait before listing limbs.
-        y = y.max(content.y + 196.0);
+        (y + 34.0).max(content.y + 196.0)
+    }
 
-        // Limbs and mount slots.
-        for limb in &species.limbs {
+    fn draw_mounts(
+        &self,
+        data: &GameData,
+        session: &GameSession,
+        creature: &CreatureInstance,
+        content: Rect,
+        mut y: f32,
+        interaction: &mut MountInteraction<'_>,
+    ) -> f32 {
+        for limb in &creature.species(data).limbs {
             draw_ui_text_ex(
                 &format!("{}  ({})", limb.name, limb.region.display_name()),
                 content.x,
@@ -349,25 +384,20 @@ impl OutfitScreen {
             for (slot, class) in limb.mounts.iter().enumerate() {
                 let btn = Rect::new(x, y - 4.0, 122.0, 26.0);
                 let assigned = creature.assignment_at(&limb.id, slot);
-                let is_sel = self.selected_slot.as_deref_pair() == Some((limb.id.as_str(), slot));
-                let label = match assigned {
-                    Some(a) => session
-                        .profile
-                        .inventory
-                        .item(a.item_id)
-                        .and_then(|i| data.graftware.get(&i.def_id))
-                        .map(|d| d.name.clone())
-                        .unwrap_or_else(|| "?".to_owned()),
-                    None => format!("[{}]", class.display_name()),
-                };
-                let fill = if is_sel {
+                let selected = self.selected_slot.as_deref_pair() == Some((limb.id.as_str(), slot));
+                let label = assigned
+                    .and_then(|a| session.profile.inventory.item(a.item_id))
+                    .and_then(|i| data.graftware.get(&i.def_id))
+                    .map(|d| d.name.clone())
+                    .unwrap_or_else(|| format!("[{}]", class.display_name()));
+                let fill = if selected {
                     Color::new(0.25, 0.35, 0.30, 1.0)
                 } else if assigned.is_some() {
                     Color::new(0.16, 0.19, 0.24, 1.0)
                 } else {
                     Color::new(0.11, 0.13, 0.16, 1.0)
                 };
-                let hovered = btn.contains_point(mouse);
+                let hovered = btn.contains_point(interaction.mouse);
                 draw_surface(
                     btn,
                     &SurfaceStyle::new(if hovered {
@@ -386,34 +416,40 @@ impl OutfitScreen {
                     TextStyle::new(12.0, dark::TEXT),
                 );
                 if hovered && is_mouse_button_released(MouseButton::Left) {
-                    match assigned {
-                        Some(_) => actions.push(OutfitAction::Unequip {
+                    if assigned.is_some() {
+                        interaction.actions.push(OutfitAction::Unequip {
                             creature: creature.id,
                             limb_id: limb.id.clone(),
                             slot,
-                        }),
-                        None => actions.push(OutfitAction::SelectSlot {
+                        });
+                    } else {
+                        interaction.actions.push(OutfitAction::SelectSlot {
                             limb_id: limb.id.clone(),
                             slot,
-                        }),
+                        });
                     }
                 }
                 x += 130.0;
             }
             y += 34.0;
         }
-
-        y += 8.0;
         draw_ui_text_ex(
             "click an empty mount, then a part on the right to graft it",
             content.x,
-            y + 8.0,
+            y + 16.0,
             TextStyle::new(13.0, dark::TEXT_DIM).params(),
         );
-        y += 30.0;
+        y + 38.0
+    }
 
-        // Boost preview: what riding this creature unlocks with this kit
-        // (`combat.md` §3.2 — Boost is species- and loadout-dependent).
+    fn draw_boosts(
+        &self,
+        data: &GameData,
+        session: &GameSession,
+        creature: &CreatureInstance,
+        content: Rect,
+        mut y: f32,
+    ) {
         let boosts = creature.boost_summary(data, &session.profile.inventory);
         draw_ui_text_ex(
             "When Ridden — the Boost",
@@ -440,16 +476,17 @@ impl OutfitScreen {
                 y += 16.0;
             }
         }
+    }
 
-        // Rider progression summary (one upgrade per Gestarium).
-        let mut ry = content.bottom() - 150.0;
+    fn draw_rider_progress(&self, session: &GameSession, content: Rect) {
+        let mut y = content.bottom() - 150.0;
         draw_ui_text_ex(
             &format!("Rider {} — Gestarium marks", session.profile.rider.name),
             content.x,
-            ry,
+            y,
             TextStyle::new(15.0, dark::TEXT_BRIGHT).params(),
         );
-        ry += 20.0;
+        y += 20.0;
         for upgrade in crate::model::rider::RiderUpgrade::ALL {
             let earned = session.profile.rider.has(upgrade);
             draw_ui_text_ex(
@@ -460,10 +497,10 @@ impl OutfitScreen {
                     upgrade.description()
                 ),
                 content.x,
-                ry,
+                y,
                 TextStyle::new(12.0, if earned { dark::TEXT } else { dark::TEXT_DIM }).params(),
             );
-            ry += 18.0;
+            y += 18.0;
         }
     }
 

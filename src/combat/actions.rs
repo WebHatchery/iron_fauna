@@ -8,6 +8,15 @@ use crate::data::graftware::{BoostEffect, GraftEffect};
 use crate::data::item::ConsumableEffect;
 use crate::data::GameData;
 
+struct AttackPlan {
+    damage: f32,
+    vigor_cost: f32,
+    cooldown: f32,
+    synergy: f32,
+    draw: f32,
+    boost_active: bool,
+}
+
 impl Battle {
     /// Issues a player command. Returns false if the command was invalid
     /// (wrong state, on cooldown, out of vigor/range).
@@ -273,86 +282,14 @@ impl Battle {
         called: Option<CalledTarget>,
         is_player_call: bool,
     ) -> bool {
-        let bal = &data.balance;
-        if !self.units.get(target).is_some_and(|u| u.alive()) {
+        let Some(plan) = self.prepare_attack(data, attacker, target, weapon) else {
             return false;
-        }
-        if self.units[attacker].side == self.units[target].side {
-            return false;
-        }
-
-        // Gather weapon parameters. With fixed positions every foe is in reach;
-        // weapons differ by damage, cooldown, and cost, not range.
-        let (damage, vigor_cost, cooldown, synergy, draw, boost_active) = match weapon {
-            WeaponRef::Natural => {
-                let u = &self.units[attacker];
-                if u.natural_cooldown > 0.0 {
-                    return false;
-                }
-                (
-                    u.natural_damage,
-                    2.0,
-                    bal.battle.natural_attack_cooldown,
-                    1.0,
-                    0.0,
-                    false,
-                )
-            }
-            WeaponRef::Mount(m) => {
-                let u = &self.units[attacker];
-                let Some(mount) = u.mounts.get(m) else {
-                    return false;
-                };
-                if !mount.usable() || !u.limbs[mount.limb_index].intact() || mount.cooldown > 0.0 {
-                    return false;
-                }
-                let Some(def) = data.graftware.get(&mount.def_id) else {
-                    return false;
-                };
-                if !def.is_weapon() {
-                    return false;
-                }
-                let ridden = self.ridden_unit() == Some(attacker);
-                (
-                    def.damage,
-                    def.vigor_cost,
-                    def.cooldown,
-                    u.synergy(data, def),
-                    def.power_draw as f32,
-                    ridden,
-                )
-            }
         };
-
-        if self.units[attacker].vigor < vigor_cost {
-            return false;
-        }
-
-        // Loaded ammunition modifies this shot (`combat.md` §3.3).
         let (ammo_mult, ammo_burn) = self.ammo_effect(data, attacker, weapon);
-
-        // Pay costs up front.
-        {
-            let u = &mut self.units[attacker];
-            u.vigor -= vigor_cost;
-            match weapon {
-                WeaponRef::Natural => u.natural_cooldown = cooldown,
-                WeaponRef::Mount(m) => u.mounts[m].cooldown = cooldown,
-            }
-            // Firing hard weapons strains the host (`game_design.md` §4.3).
-            u.strain += draw * bal.strain.fire_gain_per_draw;
-        }
-        // A fired round is spent whether it lands or not.
-        if let WeaponRef::Mount(m) = weapon {
-            if let Some(ammo) = &mut self.units[attacker].mounts[m].ammo {
-                ammo.rounds = ammo.rounds.saturating_sub(1);
-                if ammo.rounds == 0 {
-                    self.units[attacker].mounts[m].ammo = None;
-                }
-            }
-        }
+        self.spend_attack(data, attacker, weapon, &plan);
 
         // Accuracy roll.
+        let bal = &data.balance;
         let mut acc =
             bal.battle.base_accuracy + self.units[attacker].effective_accuracy_bonus(data);
         if called.is_some() {
@@ -367,66 +304,148 @@ impl Battle {
             return true; // the shot happened; it just missed
         }
 
-        let dealt = damage * synergy * ammo_mult * bal.battle.weapon_damage_mult;
+        let dealt = plan.damage * plan.synergy * ammo_mult * data.balance.battle.weapon_damage_mult;
         self.apply_damage(data, attacker, target, dealt, called);
-        // Incendiary ammo leaves a burn on the struck body.
-        if let Some((dps, secs)) = ammo_burn {
-            if self.units[target].alive() {
-                let intact = self.units[target].intact_limbs();
-                if intact.is_empty() {
-                    self.units[target].core_dots.push(Dot {
-                        dps,
-                        remaining: secs,
-                    });
-                } else {
-                    let li = intact[self.rng.below(intact.len())];
-                    self.units[target].limb_dots.push((
-                        li,
-                        Dot {
-                            dps,
-                            remaining: secs,
-                        },
-                    ));
-                }
-            }
-        }
-
-        // Ridden boosts that ride along on weapon hits (`combat.md` §3.2).
-        if boost_active {
-            let boosts: Vec<BoostEffect> = self.ridden_boosts(data, attacker).collect();
-            for b in boosts {
-                match b {
-                    BoostEffect::Corrode { dps, duration } => {
-                        self.units[target].core_dots.push(crate::combat::unit::Dot {
-                            dps,
-                            remaining: duration,
-                        });
-                    }
-                    BoostEffect::ChainArc {
-                        extra_targets,
-                        falloff,
-                    } => {
-                        let mut chained = 0;
-                        let others = self.alive_on(self.units[target].side);
-                        for other in others {
-                            if other != target && chained < extra_targets {
-                                chained += 1;
-                                self.apply_damage(data, attacker, other, dealt * falloff, None);
-                            }
-                        }
-                    }
-                    BoostEffect::Barrage { extra_shots } => {
-                        for _ in 0..extra_shots {
-                            if self.units[target].alive() {
-                                self.apply_damage(data, attacker, target, dealt * 0.5, None);
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
+        self.apply_ammo_burn(target, ammo_burn);
+        self.apply_attack_boosts(data, attacker, target, dealt, plan.boost_active);
         true
+    }
+
+    fn prepare_attack(
+        &self,
+        data: &GameData,
+        attacker: UnitId,
+        target: UnitId,
+        weapon: WeaponRef,
+    ) -> Option<AttackPlan> {
+        let target_unit = self.units.get(target)?;
+        let attacker_unit = self.units.get(attacker)?;
+        if !target_unit.alive() || attacker_unit.side == target_unit.side {
+            return None;
+        }
+        let plan = match weapon {
+            WeaponRef::Natural => {
+                if attacker_unit.natural_cooldown > 0.0 {
+                    return None;
+                }
+                AttackPlan {
+                    damage: attacker_unit.natural_damage,
+                    vigor_cost: 2.0,
+                    cooldown: data.balance.battle.natural_attack_cooldown,
+                    synergy: 1.0,
+                    draw: 0.0,
+                    boost_active: false,
+                }
+            }
+            WeaponRef::Mount(m) => {
+                let mount = attacker_unit.mounts.get(m)?;
+                if !mount.usable()
+                    || !attacker_unit.limbs[mount.limb_index].intact()
+                    || mount.cooldown > 0.0
+                {
+                    return None;
+                }
+                let def = data.graftware.get(&mount.def_id)?;
+                if !def.is_weapon() {
+                    return None;
+                }
+                AttackPlan {
+                    damage: def.damage,
+                    vigor_cost: def.vigor_cost,
+                    cooldown: def.cooldown,
+                    synergy: attacker_unit.synergy(data, def),
+                    draw: def.power_draw as f32,
+                    boost_active: self.ridden_unit() == Some(attacker),
+                }
+            }
+        };
+        (attacker_unit.vigor >= plan.vigor_cost).then_some(plan)
+    }
+
+    fn spend_attack(
+        &mut self,
+        data: &GameData,
+        attacker: UnitId,
+        weapon: WeaponRef,
+        plan: &AttackPlan,
+    ) {
+        let u = &mut self.units[attacker];
+        u.vigor -= plan.vigor_cost;
+        match weapon {
+            WeaponRef::Natural => u.natural_cooldown = plan.cooldown,
+            WeaponRef::Mount(m) => u.mounts[m].cooldown = plan.cooldown,
+        }
+        u.strain += plan.draw * data.balance.strain.fire_gain_per_draw;
+        if let WeaponRef::Mount(m) = weapon {
+            if let Some(ammo) = &mut u.mounts[m].ammo {
+                ammo.rounds = ammo.rounds.saturating_sub(1);
+                if ammo.rounds == 0 {
+                    u.mounts[m].ammo = None;
+                }
+            }
+        }
+    }
+
+    fn apply_ammo_burn(&mut self, target: UnitId, ammo_burn: Option<(f32, f32)>) {
+        let Some((dps, secs)) = ammo_burn else {
+            return;
+        };
+        if !self.units[target].alive() {
+            return;
+        }
+        let dot = Dot {
+            dps,
+            remaining: secs,
+        };
+        let intact = self.units[target].intact_limbs();
+        if intact.is_empty() {
+            self.units[target].core_dots.push(dot);
+        } else {
+            let li = intact[self.rng.below(intact.len())];
+            self.units[target].limb_dots.push((li, dot));
+        }
+    }
+
+    fn apply_attack_boosts(
+        &mut self,
+        data: &GameData,
+        attacker: UnitId,
+        target: UnitId,
+        dealt: f32,
+        boost_active: bool,
+    ) {
+        if !boost_active {
+            return;
+        }
+        let boosts: Vec<BoostEffect> = self.ridden_boosts(data, attacker).collect();
+        for boost in boosts {
+            match boost {
+                BoostEffect::Corrode { dps, duration } => self.units[target].core_dots.push(Dot {
+                    dps,
+                    remaining: duration,
+                }),
+                BoostEffect::ChainArc {
+                    extra_targets,
+                    falloff,
+                } => {
+                    let mut chained = 0;
+                    for other in self.alive_on(self.units[target].side) {
+                        if other != target && chained < extra_targets {
+                            chained += 1;
+                            self.apply_damage(data, attacker, other, dealt * falloff, None);
+                        }
+                    }
+                }
+                BoostEffect::Barrage { extra_shots } => {
+                    for _ in 0..extra_shots {
+                        if self.units[target].alive() {
+                            self.apply_damage(data, attacker, target, dealt * 0.5, None);
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
     }
 
     /// Routes damage per the anatomy: called mount → graft; otherwise a limb;

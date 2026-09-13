@@ -62,8 +62,8 @@ impl Audio {
         for sfx in Sfx::ALL {
             if let Err(error) = manager.load_sound(sfx, sfx.file()).await {
                 eprintln!(
-                    "audio: could not load {} from {}: {}",
-                    format!("{:?}", sfx),
+                    "audio: could not load {:?} from {}: {}",
+                    sfx,
                     sfx.file(),
                     error
                 );

@@ -38,7 +38,7 @@ fn embedded_catalogs_and_balance_are_valid() {
     assert_eq!(data.balance.party_slot_budget, 6);
     assert!(data.species.len() >= 4);
     assert!(data.graftware.len() >= 6);
-    assert!(data.items.len() > 0);
+    assert!(!data.items.is_empty());
     for (_, species) in data.species.iter() {
         assert!((1..=4).contains(&species.tier));
         assert!((species.power <= 100) && (species.speed <= 100));

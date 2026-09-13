@@ -1,6 +1,7 @@
 //! High-level game loop and state transitions.
 
 mod actions;
+pub(crate) mod battle;
 mod capture;
 pub(crate) mod overworld;
 

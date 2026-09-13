@@ -135,7 +135,7 @@ impl BattleScreen {
         }
 
         if !self.paused() {
-            self.battle.update(data, dt);
+            crate::game::battle::advance(&mut self.battle, data, dt);
         }
 
         for event in self.battle.drain_events() {
