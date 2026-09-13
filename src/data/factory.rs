@@ -26,6 +26,3 @@ pub struct FactoryDef {
     #[serde(default)]
     pub grow_cost: i64,
 }
-
-#[cfg(test)]
-mod tests;

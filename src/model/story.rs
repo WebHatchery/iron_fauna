@@ -134,6 +134,3 @@ pub fn apply_dialogue_effects(
     }
     notes
 }
-
-#[cfg(test)]
-mod tests;

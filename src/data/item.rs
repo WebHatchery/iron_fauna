@@ -74,6 +74,3 @@ impl ConsumableDef {
         }
     }
 }
-
-#[cfg(test)]
-mod tests;

@@ -64,6 +64,3 @@ impl SettlementDef {
         self.duelists.iter().find(|d| d.id == id)
     }
 }
-
-#[cfg(test)]
-mod tests;

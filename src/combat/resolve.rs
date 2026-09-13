@@ -90,6 +90,3 @@ pub fn apply(session: &mut GameSession, data: &GameData, battle: &Battle) -> Res
     }
     summary
 }
-
-#[cfg(test)]
-mod tests;

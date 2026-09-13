@@ -14,11 +14,6 @@ pub mod items;
 pub mod resolve;
 pub mod unit;
 
-#[cfg(test)]
-mod balance_tests;
-#[cfg(test)]
-mod sim_tests;
-
 use crate::model::rider::Rider;
 use serde::{Deserialize, Serialize};
 
@@ -133,7 +128,8 @@ impl RiderMods {
         }
     }
 
-    #[cfg(test)]
+    /// Neutral modifiers make deterministic engine tests and tools independent
+    /// of rider progression.
     pub fn neutral() -> Self {
         Self {
             called_shot_mult: 1.0,

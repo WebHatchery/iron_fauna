@@ -116,6 +116,3 @@ impl Inventory {
         true
     }
 }
-
-#[cfg(test)]
-mod tests;

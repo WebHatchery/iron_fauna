@@ -133,6 +133,3 @@ pub fn tracker_line(session: &GameSession, data: &GameData) -> Option<String> {
         def.tracker, progress, def.objective.count
     ))
 }
-
-#[cfg(test)]
-mod tests;

@@ -159,6 +159,3 @@ impl GraftwareDef {
         (self.value / 2).max(5)
     }
 }
-
-#[cfg(test)]
-mod tests;

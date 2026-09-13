@@ -226,6 +226,3 @@ impl SpeciesDef {
         self.limbs.iter().find(|l| l.id == limb_id)
     }
 }
-
-#[cfg(test)]
-mod tests;

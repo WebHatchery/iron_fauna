@@ -1,18 +1,9 @@
 //! Macroquad game template wired to macroquad-toolkit.
 
+use iron_fauna::game::Game;
+use iron_fauna::ui;
 use macroquad::prelude::*;
 use macroquad_toolkit::capture;
-
-mod audio;
-mod combat;
-mod data;
-mod game;
-mod model;
-mod state;
-mod ui;
-mod util;
-
-use game::Game;
 
 fn window_conf() -> Conf {
     capture::capture_window_conf(

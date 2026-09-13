@@ -316,6 +316,3 @@ impl BattleUnit {
             .collect()
     }
 }
-
-#[cfg(test)]
-mod tests;

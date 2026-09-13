@@ -150,6 +150,3 @@ impl GameData {
         })
     }
 }
-
-#[cfg(test)]
-mod tests;

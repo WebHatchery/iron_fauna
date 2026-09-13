@@ -293,6 +293,3 @@ impl BestiaryScreen {
         }
     }
 }
-
-#[cfg(test)]
-mod tests;

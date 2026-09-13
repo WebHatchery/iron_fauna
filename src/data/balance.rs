@@ -179,6 +179,3 @@ pub struct BalanceConfig {
     pub battle: BattleTuning,
     pub world: WorldTuning,
 }
-
-#[cfg(test)]
-mod tests;

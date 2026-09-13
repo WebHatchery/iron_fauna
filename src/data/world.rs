@@ -278,6 +278,3 @@ impl WorldDef {
         self.regions.iter().find(|r| r.id == id)
     }
 }
-
-#[cfg(test)]
-mod tests;

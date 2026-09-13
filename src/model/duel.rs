@@ -101,6 +101,3 @@ pub fn apply_duel_result(
     }
     lines
 }
-
-#[cfg(test)]
-mod tests;

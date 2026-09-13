@@ -121,6 +121,3 @@ pub enum AcquireResult {
     JoinedParty,
     SentToStorage,
 }
-
-#[cfg(test)]
-mod tests;

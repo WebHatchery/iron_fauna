@@ -170,6 +170,3 @@ impl WorldState {
         None
     }
 }
-
-#[cfg(test)]
-mod tests;

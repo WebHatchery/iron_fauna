@@ -143,6 +143,3 @@ fn closing_line(purge: usize, reseed: usize, bind: usize) -> &'static str {
         "Some regions you buried. Some you brought back. Some you kept. No single word fits the map you leave behind — only your name, written across all of it, in the only handwriting the world will remember: the choices no one else was left to make."
     }
 }
-
-#[cfg(test)]
-mod tests;

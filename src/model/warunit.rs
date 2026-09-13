@@ -60,6 +60,3 @@ pub fn war_unit_grafts(
     }
     grafts
 }
-
-#[cfg(test)]
-mod tests;

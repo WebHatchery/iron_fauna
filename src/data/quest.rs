@@ -33,6 +33,3 @@ pub struct QuestDef {
     #[serde(default)]
     pub reward_grafts: Vec<String>,
 }
-
-#[cfg(test)]
-mod tests;

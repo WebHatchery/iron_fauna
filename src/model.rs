@@ -72,6 +72,3 @@ impl Profile {
             .collect()
     }
 }
-
-#[cfg(test)]
-mod tests;

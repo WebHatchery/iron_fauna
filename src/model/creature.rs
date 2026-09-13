@@ -182,6 +182,3 @@ impl EquipError {
         }
     }
 }
-
-#[cfg(test)]
-mod tests;
